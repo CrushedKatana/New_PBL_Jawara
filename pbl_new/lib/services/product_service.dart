@@ -1,127 +1,109 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 import '../models/product_model.dart';
 
 class ProductService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
-
-  // Add product
-  Future<String?> addProduct({
-    required ProductModel product,
-    required List<File> imageFiles,
+  // Get all products
+  Future<List<ProductModel>> getProducts({
+    String? sellerId,
+    String? categoryId,
+    String? search,
   }) async {
     try {
-      // Upload images
-      List<String> imageUrls = [];
-      for (int i = 0; i < imageFiles.length; i++) {
-        String fileName = '${product.sellerId}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
-        Reference ref = _storage.ref().child('products/$fileName');
-        await ref.putFile(imageFiles[i]);
-        String downloadUrl = await ref.getDownloadURL();
-        imageUrls.add(downloadUrl);
+      String url = ApiConfig.productsEndpoint;
+      List<String> params = [];
+      
+      if (sellerId != null) params.add('seller_id=$sellerId');
+      if (categoryId != null) params.add('category_id=$categoryId');
+      if (search != null) params.add('search=$search');
+      
+      if (params.isNotEmpty) {
+        url += '?${params.join('&')}';
       }
 
-      // Create product with image URLs
-      ProductModel newProduct = ProductModel(
-        id: '',
-        sellerId: product.sellerId,
-        sellerName: product.sellerName,
-        sellerRtRw: product.sellerRtRw,
-        sellerVerified: product.sellerVerified,
-        name: product.name,
-        category: product.category,
-        price: product.price,
-        size: product.size,
-        condition: product.condition,
-        description: product.description,
-        imageUrls: imageUrls,
-        status: 'pending',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        isNew: true,
-      );
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(ApiConfig.timeout);
 
-      DocumentReference docRef = await _firestore.collection('products').add(newProduct.toMap());
-      return docRef.id;
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          List<ProductModel> products = [];
+          for (var item in data['data']) {
+            products.add(ProductModel.fromJson(item));
+          }
+          return products;
+        }
+      }
+      return [];
     } catch (e) {
-      print('Error adding product: $e');
-      return null;
+      print('Error getting products: $e');
+      return [];
     }
   }
 
-  // Get all products
-  Stream<List<ProductModel>> getProducts({String? category, String? status}) {
-    Query query = _firestore.collection('products').orderBy('createdAt', descending: true);
-    
-    if (category != null && category.isNotEmpty) {
-      query = query.where('category', isEqualTo: category);
-    }
-    if (status != null) {
-      query = query.where('status', isEqualTo: status);
-    }
-
-    return query.snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) => ProductModel.fromFirestore(doc)).toList());
-  }
-
-  // Get user products
-  Stream<List<ProductModel>> getUserProducts(String userId) {
-    return _firestore
-        .collection('products')
-        .where('sellerId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => ProductModel.fromFirestore(doc)).toList());
-  }
-
-  // Get product by ID
-  Future<ProductModel?> getProductById(String productId) async {
+  // Add new product
+  Future<Map<String, dynamic>> addProduct(ProductModel product) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('products').doc(productId).get();
-      if (doc.exists) {
-        return ProductModel.fromFirestore(doc);
+      final response = await http.post(
+        Uri.parse(ApiConfig.productsEndpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(product.toJson()),
+      ).timeout(ApiConfig.timeout);
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 201 && data['success'] == true) {
+        return {'success': true, 'id': data['data']['id']};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Failed to add product'};
       }
     } catch (e) {
-      print('Error getting product: $e');
+      return {'success': false, 'error': 'Connection error: $e'};
     }
-    return null;
   }
 
   // Update product
-  Future<void> updateProduct(String productId, Map<String, dynamic> data) async {
-    data['updatedAt'] = Timestamp.fromDate(DateTime.now());
-    await _firestore.collection('products').doc(productId).update(data);
+  Future<Map<String, dynamic>> updateProduct(ProductModel product) async {
+    try {
+      final response = await http.put(
+        Uri.parse(ApiConfig.productsEndpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(product.toJson()),
+      ).timeout(ApiConfig.timeout);
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {'success': true};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Failed to update product'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Connection error: $e'};
+    }
   }
 
   // Delete product
-  Future<void> deleteProduct(String productId) async {
-    await _firestore.collection('products').doc(productId).delete();
-  }
+  Future<Map<String, dynamic>> deleteProduct(String productId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse(ApiConfig.productsEndpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'id': productId}),
+      ).timeout(ApiConfig.timeout);
 
-  // Increment view count
-  Future<void> incrementViewCount(String productId) async {
-    await _firestore.collection('products').doc(productId).update({
-      'viewCount': FieldValue.increment(1),
-    });
-  }
+      final data = json.decode(response.body);
 
-  // Search products
-  Stream<List<ProductModel>> searchProducts(String query) {
-    return _firestore
-        .collection('products')
-        .where('status', isEqualTo: 'aktif')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => ProductModel.fromFirestore(doc))
-          .where((product) =>
-              product.name.toLowerCase().contains(query.toLowerCase()) ||
-              product.category.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-    });
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {'success': true};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Failed to delete product'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Connection error: $e'};
+    }
   }
 }

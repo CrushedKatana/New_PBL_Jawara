@@ -1,97 +1,111 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 import '../models/message_model.dart';
 
 class ChatService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // Get conversation list
+  Future<List<MessageModel>> getConversations(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.chatEndpoint}?user_id=$userId'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(ApiConfig.timeout);
 
-  // Get or create chat
-  Future<String> getOrCreateChat(String userId1, String userId2, Map<String, dynamic> user1Data, Map<String, dynamic> user2Data) async {
-    String chatId = _getChatId(userId1, userId2);
-    
-    DocumentSnapshot chatDoc = await _firestore.collection('chats').doc(chatId).get();
-    
-    if (!chatDoc.exists) {
-      await _firestore.collection('chats').doc(chatId).set({
-        'participants': [userId1, userId2],
-        'lastMessage': '',
-        'lastMessageTime': Timestamp.now(),
-        'unreadCount': {userId1: 0, userId2: 0},
-        'participantsData': {
-          userId1: user1Data,
-          userId2: user2Data,
-        },
-      });
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          List<MessageModel> messages = [];
+          for (var item in data['data']) {
+            messages.add(MessageModel.fromJson(item));
+          }
+          return messages;
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error getting conversations: $e');
+      return [];
     }
-    
-    return chatId;
   }
 
-  // Get chat ID
-  String _getChatId(String userId1, String userId2) {
-    return userId1.hashCode <= userId2.hashCode
-        ? '${userId1}_$userId2'
-        : '${userId2}_$userId1';
+  // Get messages with specific user
+  Future<List<MessageModel>> getMessages(String userId, String conversationWith) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.chatEndpoint}?user_id=$userId&conversation_with=$conversationWith'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          List<MessageModel> messages = [];
+          for (var item in data['data']) {
+            messages.add(MessageModel.fromJson(item));
+          }
+          return messages;
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error getting messages: $e');
+      return [];
+    }
   }
 
   // Send message
-  Future<void> sendMessage({
-    required String chatId,
+  Future<Map<String, dynamic>> sendMessage({
     required String senderId,
     required String receiverId,
     required String message,
+    String? productId,
   }) async {
     try {
-      // Add message
-      await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .add({
-        'senderId': senderId,
-        'receiverId': receiverId,
-        'message': message,
-        'timestamp': Timestamp.now(),
-        'isRead': false,
-      });
+      final response = await http.post(
+        Uri.parse(ApiConfig.chatEndpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'sender_id': senderId,
+          'receiver_id': receiverId,
+          'message': message,
+          'product_id': productId,
+        }),
+      ).timeout(ApiConfig.timeout);
 
-      // Update chat
-      await _firestore.collection('chats').doc(chatId).update({
-        'lastMessage': message,
-        'lastMessageTime': Timestamp.now(),
-        'unreadCount.$receiverId': FieldValue.increment(1),
-      });
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 201 && data['success'] == true) {
+        return {'success': true, 'id': data['data']['id']};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Failed to send message'};
+      }
     } catch (e) {
-      print('Error sending message: $e');
+      return {'success': false, 'error': 'Connection error: $e'};
     }
   }
 
-  // Get messages stream
-  Stream<List<MessageModel>> getMessages(String chatId) {
-    return _firestore
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .orderBy('timestamp', descending: true)
-        .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => MessageModel.fromFirestore(doc)).toList());
-  }
-
-  // Get user chats
-  Stream<List<ChatModel>> getUserChats(String userId) {
-    return _firestore
-        .collection('chats')
-        .where('participants', arrayContains: userId)
-        .orderBy('lastMessageTime', descending: true)
-        .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => ChatModel.fromFirestore(doc)).toList());
-  }
-
   // Mark messages as read
-  Future<void> markAsRead(String chatId, String userId) async {
-    await _firestore.collection('chats').doc(chatId).update({
-      'unreadCount.$userId': 0,
-    });
+  Future<Map<String, dynamic>> markAsRead(String userId, String conversationWith) async {
+    try {
+      final response = await http.put(
+        Uri.parse(ApiConfig.chatEndpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_id': userId,
+          'conversation_with': conversationWith,
+        }),
+      ).timeout(ApiConfig.timeout);
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {'success': true};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Failed to mark as read'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Connection error: $e'};
+    }
   }
 }

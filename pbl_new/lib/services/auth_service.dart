@@ -1,94 +1,157 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
 import '../models/user_model.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static UserModel? _currentUser;
+  
+  static UserModel? get currentUser => _currentUser;
 
-  // Get current user
-  User? get currentUser => _auth.currentUser;
+  // Login
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse(ApiConfig.authEndpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'password': password,
+        }),
+      ).timeout(ApiConfig.timeout);
 
-  // Stream of auth changes
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+      final data = json.decode(response.body);
 
-  // Sign up
-  Future<UserModel?> signUp({
-    required String email,
-    required String password,
+      if (response.statusCode == 200 && data['success'] == true) {
+        _currentUser = UserModel.fromJson(data['data']);
+        await _saveUserSession(_currentUser!);
+        return {'success': true, 'user': _currentUser};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Login failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Connection error: $e'};
+    }
+  }
+
+  // Register
+  Future<Map<String, dynamic>> register({
     required String name,
-    required String rtRw,
-    required String kelurahan,
-  }) async {
-    try {
-      UserCredential result = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      User? user = result.user;
-
-      if (user != null) {
-        // Create user document
-        UserModel newUser = UserModel(
-          uid: user.uid,
-          name: name,
-          role: 'warga',
-          rtRw: rtRw,
-          kelurahan: kelurahan,
-          createdAt: DateTime.now(),
-        );
-
-        await _firestore.collection('users').doc(user.uid).set(newUser.toMap());
-        return newUser;
-      }
-    } catch (e) {
-      print('Error signing up: $e');
-    }
-    return null;
-  }
-
-  // Sign in
-  Future<UserModel?> signIn({
     required String email,
     required String password,
+    String? phone,
+    String? address,
+    String? rt,
+    String? rw,
   }) async {
     try {
-      UserCredential result = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      User? user = result.user;
+      final response = await http.post(
+        Uri.parse('${ApiConfig.authEndpoint}?action=register'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'name': name,
+          'email': email,
+          'password': password,
+          'phone': phone ?? '',
+          'address': address ?? '',
+          'rt': rt ?? '',
+          'rw': rw ?? '',
+        }),
+      ).timeout(ApiConfig.timeout);
 
-      if (user != null) {
-        DocumentSnapshot doc = await _firestore.collection('users').doc(user.uid).get();
-        return UserModel.fromFirestore(doc);
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 201 && data['success'] == true) {
+        _currentUser = UserModel.fromJson(data['data']);
+        await _saveUserSession(_currentUser!);
+        return {'success': true, 'user': _currentUser};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Registration failed'};
       }
     } catch (e) {
-      print('Error signing in: $e');
+      return {'success': false, 'error': 'Connection error: $e'};
     }
-    return null;
   }
 
-  // Sign out
-  Future<void> signOut() async {
-    await _auth.signOut();
-  }
-
-  // Get user data
-  Future<UserModel?> getUserData(String uid) async {
+  // Get User Profile
+  Future<Map<String, dynamic>> getUserProfile(String userId) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
-      if (doc.exists) {
-        return UserModel.fromFirestore(doc);
+      final response = await http.get(
+        Uri.parse('${ApiConfig.authEndpoint}?user_id=$userId'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(ApiConfig.timeout);
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {'success': true, 'user': UserModel.fromJson(data['data'])};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Failed to get profile'};
       }
     } catch (e) {
-      print('Error getting user data: $e');
+      return {'success': false, 'error': 'Connection error: $e'};
     }
-    return null;
   }
 
-  // Update user data
-  Future<void> updateUserData(String uid, Map<String, dynamic> data) async {
-    await _firestore.collection('users').doc(uid).update(data);
+  // Update Profile
+  Future<Map<String, dynamic>> updateProfile(UserModel user) async {
+    try {
+      final response = await http.put(
+        Uri.parse(ApiConfig.authEndpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(user.toJson()),
+      ).timeout(ApiConfig.timeout);
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        _currentUser = user;
+        await _saveUserSession(user);
+        return {'success': true};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Update failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Connection error: $e'};
+    }
+  }
+
+  // Logout
+  Future<void> logout() async {
+    _currentUser = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_session');
+  }
+
+  // Check if user is logged in
+  Future<bool> isLoggedIn() async {
+    if (_currentUser != null) return true;
+    
+    final prefs = await SharedPreferences.getInstance();
+    final userJson = prefs.getString('user_session');
+    
+    if (userJson != null) {
+      _currentUser = UserModel.fromJson(json.decode(userJson));
+      return true;
+    }
+    
+    return false;
+  }
+
+  // Save user session
+  Future<void> _saveUserSession(UserModel user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_session', json.encode(user.toJson()));
+  }
+
+  // Restore user session
+  Future<void> restoreSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userJson = prefs.getString('user_session');
+    
+    if (userJson != null) {
+      _currentUser = UserModel.fromJson(json.decode(userJson));
+    }
   }
 }

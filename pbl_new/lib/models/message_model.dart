@@ -1,81 +1,60 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class MessageModel {
   final String id;
   final String senderId;
   final String receiverId;
+  final String? productId;
   final String message;
-  final DateTime timestamp;
   final bool isRead;
+  final DateTime? createdAt;
+  final String? senderName;
+  final String? senderPhoto;
+  final String? receiverName;
+  final String? receiverPhoto;
+  final String? productTitle;
+  final String? productImage;
 
   MessageModel({
     required this.id,
     required this.senderId,
     required this.receiverId,
+    this.productId,
     required this.message,
-    required this.timestamp,
     this.isRead = false,
+    this.createdAt,
+    this.senderName,
+    this.senderPhoto,
+    this.receiverName,
+    this.receiverPhoto,
+    this.productTitle,
+    this.productImage,
   });
 
-  factory MessageModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+  factory MessageModel.fromJson(Map<String, dynamic> json) {
     return MessageModel(
-      id: doc.id,
-      senderId: data['senderId'] ?? '',
-      receiverId: data['receiverId'] ?? '',
-      message: data['message'] ?? '',
-      timestamp: (data['timestamp'] as Timestamp).toDate(),
-      isRead: data['isRead'] ?? false,
+      id: json['id'] ?? '',
+      senderId: json['sender_id'] ?? '',
+      receiverId: json['receiver_id'] ?? '',
+      productId: json['product_id'],
+      message: json['message'] ?? '',
+      isRead: json['is_read'] == 1 || json['is_read'] == true,
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at']) 
+          : null,
+      senderName: json['sender_name'],
+      senderPhoto: json['sender_photo'],
+      receiverName: json['receiver_name'],
+      receiverPhoto: json['receiver_photo'],
+      productTitle: json['product_title'],
+      productImage: json['product_image'],
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
-      'senderId': senderId,
-      'receiverId': receiverId,
+      'sender_id': senderId,
+      'receiver_id': receiverId,
+      'product_id': productId,
       'message': message,
-      'timestamp': Timestamp.fromDate(timestamp),
-      'isRead': isRead,
-    };
-  }
-}
-
-class ChatModel {
-  final String id;
-  final List<String> participants;
-  final String lastMessage;
-  final DateTime lastMessageTime;
-  final Map<String, int> unreadCount;
-  final Map<String, dynamic> participantsData;
-
-  ChatModel({
-    required this.id,
-    required this.participants,
-    required this.lastMessage,
-    required this.lastMessageTime,
-    required this.unreadCount,
-    required this.participantsData,
-  });
-
-  factory ChatModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    return ChatModel(
-      id: doc.id,
-      participants: List<String>.from(data['participants'] ?? []),
-      lastMessage: data['lastMessage'] ?? '',
-      lastMessageTime: (data['lastMessageTime'] as Timestamp).toDate(),
-      unreadCount: Map<String, int>.from(data['unreadCount'] ?? {}),
-      participantsData: Map<String, dynamic>.from(data['participantsData'] ?? {}),
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'participants': participants,
-      'lastMessage': lastMessage,
-      'lastMessageTime': Timestamp.fromDate(lastMessageTime),
-      'unreadCount': unreadCount,
-      'participantsData': participantsData,
     };
   }
 }

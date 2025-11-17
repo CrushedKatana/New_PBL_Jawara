@@ -1,61 +1,56 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class UserModel {
-  final String uid;
+  final String id;
   final String name;
-  final String role; // 'warga'
-  final String? rtRw;
-  final String? kelurahan;
-  final bool isVerified;
+  final String email;
+  final String? phone;
+  final String? address;
+  final String? rt;
+  final String? rw;
+  final String userType; // 'warga', 'admin', 'rt'
   final String? photoUrl;
-  final int productsSold;
-  final int favoriteCount;
-  final double rating;
-  final DateTime createdAt;
+  final DateTime? createdAt;
 
   UserModel({
-    required this.uid,
+    required this.id,
     required this.name,
-    required this.role,
-    this.rtRw,
-    this.kelurahan,
-    this.isVerified = false,
+    required this.email,
+    this.phone,
+    this.address,
+    this.rt,
+    this.rw,
+    this.userType = 'warga',
     this.photoUrl,
-    this.productsSold = 0,
-    this.favoriteCount = 0,
-    this.rating = 0.0,
-    required this.createdAt,
+    this.createdAt,
   });
 
-  factory UserModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+  factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      uid: doc.id,
-      name: data['name'] ?? '',
-      role: data['role'] ?? 'warga',
-      rtRw: data['rtRw'],
-      kelurahan: data['kelurahan'],
-      isVerified: data['isVerified'] ?? false,
-      photoUrl: data['photoUrl'],
-      productsSold: data['productsSold'] ?? 0,
-      favoriteCount: data['favoriteCount'] ?? 0,
-      rating: (data['rating'] ?? 0.0).toDouble(),
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+      phone: json['phone'],
+      address: json['address'],
+      rt: json['rt'],
+      rw: json['rw'],
+      userType: json['user_type'] ?? 'warga',
+      photoUrl: json['photo_url'],
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at']) 
+          : null,
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'name': name,
-      'role': role,
-      'rtRw': rtRw,
-      'kelurahan': kelurahan,
-      'isVerified': isVerified,
-      'photoUrl': photoUrl,
-      'productsSold': productsSold,
-      'favoriteCount': favoriteCount,
-      'rating': rating,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'email': email,
+      'phone': phone,
+      'address': address,
+      'rt': rt,
+      'rw': rw,
+      'user_type': userType,
+      'photo_url': photoUrl,
     };
   }
 }
