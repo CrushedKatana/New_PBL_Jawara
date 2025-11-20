@@ -24,7 +24,6 @@ class ChatDetailScreen extends StatefulWidget {
 
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final ChatService _chatService = ChatService();
-  final AuthService _authService = AuthService();
   final TextEditingController _messageController = TextEditingController();
 
   @override
@@ -34,24 +33,24 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   void _markAsRead() async {
-    final currentUser = _authService.currentUser;
+    final currentUser = AuthService.currentUser;
     if (currentUser != null) {
-      await _chatService.markAsRead(widget.chatId, currentUser.uid);
+      await _chatService.markAsRead(currentUser.id, widget.otherUserId);
     }
   }
 
   void _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
 
-    final currentUser = _authService.currentUser;
+    final currentUser = AuthService.currentUser;
     if (currentUser != null) {
       await _chatService.sendMessage(
-        chatId: widget.chatId,
-        senderId: currentUser.uid,
+        senderId: currentUser.id,
         receiverId: widget.otherUserId,
         message: _messageController.text.trim(),
       );
       _messageController.clear();
+      setState(() {}); // Refresh the message list
     }
   }
 
@@ -63,7 +62,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = _authService.currentUser;
+    final currentUser = AuthService.currentUser;
 
     return Scaffold(
       appBar: AppBar(
@@ -123,8 +122,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           Expanded(
             child: currentUser == null
                 ? const Center(child: Text('Silakan login terlebih dahulu'))
-                : StreamBuilder<List<MessageModel>>(
-                    stream: _chatService.getMessages(widget.chatId),
+                : FutureBuilder<List<MessageModel>>(
+                    future: _chatService.getMessages(currentUser.id, widget.otherUserId),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
@@ -143,7 +142,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         itemCount: messages.length,
                         itemBuilder: (context, index) {
                           final message = messages[index];
-                          final isMe = message.senderId == currentUser.uid;
+                          final isMe = message.senderId == currentUser.id;
                           final timeFormat = DateFormat('HH:mm');
 
                           return Align(
@@ -175,7 +174,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    timeFormat.format(message.timestamp),
+                                    timeFormat.format(message.createdAt ?? DateTime.now()),
                                     style: TextStyle(
                                       color: isMe ? Colors.white70 : Colors.grey,
                                       fontSize: 10,

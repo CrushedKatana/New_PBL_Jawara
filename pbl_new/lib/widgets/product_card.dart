@@ -47,9 +47,9 @@ class _ProductCardElement extends ComponentElement {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                  child: product.imageUrls.isNotEmpty
+                  child: product.imageUrl != null && product.imageUrl!.isNotEmpty
                       ? Image.network(
-                          product.imageUrls[0],
+                          product.imageUrl!,
                           height: 140,
                           width: double.infinity,
                           fit: BoxFit.cover,
@@ -108,7 +108,7 @@ class _ProductCardElement extends ComponentElement {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product.name,
+                    product.title,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -132,7 +132,7 @@ class _ProductCardElement extends ComponentElement {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          product.sellerRtRw,
+                          product.location ?? '-',
                           style: const TextStyle(fontSize: 11, color: Colors.grey),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -146,13 +146,11 @@ class _ProductCardElement extends ComponentElement {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          product.sellerName,
+                          product.sellerName ?? 'Unknown',
                           style: const TextStyle(fontSize: 11, color: Colors.grey),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (product.sellerVerified)
-                        const Icon(Icons.verified, size: 14, color: Color(0xFF2D3FE3)),
                     ],
                   ),
                 ],

@@ -5,6 +5,7 @@ import '../models/product_model.dart';
 import '../models/category_model.dart';
 import '../services/product_service.dart';
 import '../services/auth_service.dart';
+import '../services/category_service.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -16,7 +17,7 @@ class AddProductScreen extends StatefulWidget {
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
   final ProductService _productService = ProductService();
-  final AuthService _authService = AuthService();
+  final CategoryService _categoryService = CategoryService();
   final ImagePicker _picker = ImagePicker();
 
   final _nameController = TextEditingController();
@@ -27,7 +28,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   String? _selectedCategory;
   List<File> _images = [];
+  List<CategoryModel> categories = [];
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final cats = await _categoryService.getCategories();
+    setState(() {
+      categories = cats;
+    });
+  }
 
   Future<void> _pickImages() async {
     final pickedFiles = await _picker.pickMultiImage();
@@ -48,9 +63,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   Future<void> _submitProduct() async {
-    if (!_formKey.currentState!.validate() || _images.isEmpty) {
+    if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mohon lengkapi semua data dan tambahkan foto produk')),
+        const SnackBar(content: Text('Mohon lengkapi semua data')),
       );
       return;
     }
@@ -60,49 +75,48 @@ class _AddProductScreenState extends State<AddProductScreen> {
     });
 
     try {
-      final currentUser = _authService.currentUser;
+      final currentUser = AuthService.currentUser;
       if (currentUser == null) {
-        throw Exception('User tidak ditemukan');
-      }
-
-      final userData = await _authService.getUserData(currentUser.uid);
-      if (userData == null) {
-        throw Exception('Data user tidak ditemukan');
+        throw Exception('User tidak ditemukan, silakan login terlebih dahulu');
       }
 
       final product = ProductModel(
         id: '',
-        sellerId: currentUser.uid,
-        sellerName: userData.name,
-        sellerRtRw: userData.rtRw ?? '',
-        sellerVerified: userData.isVerified,
-        name: _nameController.text,
-        category: _selectedCategory!,
-        price: double.parse(_priceController.text),
-        size: _sizeController.text.isEmpty ? null : _sizeController.text,
-        condition: _conditionController.text,
+        title: _nameController.text,
         description: _descriptionController.text,
-        imageUrls: [],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        price: double.parse(_priceController.text),
+        categoryId: _selectedCategory,
+        sellerId: currentUser.id,
+        sellerName: currentUser.name,
+        location: currentUser.address,
+        // imageUrl will be set later when implementing image upload
+        imageUrl: '',
       );
 
-      await _productService.addProduct(product: product, imageFiles: _images);
+      final result = await _productService.addProduct(product);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Produk berhasil ditambahkan')),
-        );
-        Navigator.pop(context);
+        if (result['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Produk berhasil ditambahkan')),
+          );
+          Navigator.pop(context);
+        } else {
+          throw Exception(result['error'] ?? 'Gagal menambahkan produk');
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -232,7 +246,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         border: OutlineInputBorder(),
                       ),
                       hint: const Text('Pilih kategori'),
-                      items: CategoryModel.getCategories().map((cat) {
+                      items: categories.map((cat) {
                         return DropdownMenuItem(
                           value: cat.id,
                           child: Text(cat.name),

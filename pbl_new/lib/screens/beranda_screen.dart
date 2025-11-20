@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/category_model.dart';
 import '../models/product_model.dart';
 import '../services/product_service.dart';
+import '../services/category_service.dart';
 import '../widgets/product_card.dart';
 import 'product_detail_screen.dart';
 
@@ -14,8 +15,23 @@ class BerandaScreen extends StatefulWidget {
 
 class _BerandaScreenState extends State<BerandaScreen> {
   final ProductService _productService = ProductService();
+  final CategoryService _categoryService = CategoryService();
   String searchQuery = '';
   String? selectedCategory;
+  List<CategoryModel> categories = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final cats = await _categoryService.getCategories();
+    setState(() {
+      categories = cats;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,9 +133,9 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: CategoryModel.getCategories().length,
+                      itemCount: categories.length,
                       itemBuilder: (context, index) {
-                        final category = CategoryModel.getCategories()[index];
+                        final category = categories[index];
                         final isSelected = selectedCategory == category.id;
                         return GestureDetector(
                           onTap: () {
@@ -148,7 +164,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                                   ),
                                   child: Center(
                                     child: Text(
-                                      category.icon,
+                                      category.icon ?? '📦',
                                       style: const TextStyle(fontSize: 32),
                                     ),
                                   ),
@@ -161,13 +177,6 @@ class _BerandaScreenState extends State<BerandaScreen> {
                                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                   ),
                                   textAlign: TextAlign.center,
-                                ),
-                                Text(
-                                  '${category.productCount} produk',
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey,
-                                  ),
                                 ),
                               ],
                             ),
@@ -204,13 +213,11 @@ class _BerandaScreenState extends State<BerandaScreen> {
             ),
 
             // Products Grid
-            StreamBuilder<List<ProductModel>>(
-              stream: searchQuery.isEmpty
-                  ? _productService.getProducts(
-                      category: selectedCategory,
-                      status: 'aktif',
-                    )
-                  : _productService.searchProducts(searchQuery),
+              FutureBuilder<List<ProductModel>>(
+                future: _productService.getProducts(
+                  categoryId: selectedCategory,
+                  search: searchQuery.isEmpty ? null : searchQuery,
+                ),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SliverToBoxAdapter(

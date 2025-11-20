@@ -118,7 +118,7 @@ class AuthService {
   }
 
   // Logout
-  Future<void> logout() async {
+  static Future<void> logout() async {
     _currentUser = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('user_session');

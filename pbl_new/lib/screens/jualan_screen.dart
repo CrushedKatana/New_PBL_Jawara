@@ -15,7 +15,6 @@ class JualanScreen extends StatefulWidget {
 
 class _JualanScreenState extends State<JualanScreen> with SingleTickerProviderStateMixin {
   final ProductService _productService = ProductService();
-  final AuthService _authService = AuthService();
   late TabController _tabController;
 
   @override
@@ -32,7 +31,7 @@ class _JualanScreenState extends State<JualanScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = _authService.currentUser;
+    final currentUser = AuthService.currentUser;
 
     return Scaffold(
       backgroundColor: const Color(0xFF2D3FE3),
@@ -67,17 +66,17 @@ class _JualanScreenState extends State<JualanScreen> with SingleTickerProviderSt
 
             // Stats Cards
             if (currentUser != null)
-              StreamBuilder<List<ProductModel>>(
-                stream: _productService.getUserProducts(currentUser.uid),
+              FutureBuilder<List<ProductModel>>(
+                future: _productService.getProducts(sellerId: currentUser.id),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return const SizedBox();
                   }
 
                   final products = snapshot.data!;
-                  final aktif = products.where((p) => p.status == 'aktif').length;
-                  final pending = products.where((p) => p.status == 'pending').length;
-                  final terjual = products.where((p) => p.status == 'terjual').length;
+                  final aktif = products.where((p) => p.isActive).length;
+                  final pending = products.length - aktif; // Non-active products
+                  final terjual = 0; // Not tracking sold status yet
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -146,8 +145,8 @@ class _JualanScreenState extends State<JualanScreen> with SingleTickerProviderSt
                     Expanded(
                       child: currentUser == null
                           ? const Center(child: Text('Silakan login terlebih dahulu'))
-                          : StreamBuilder<List<ProductModel>>(
-                              stream: _productService.getUserProducts(currentUser.uid),
+                          : FutureBuilder<List<ProductModel>>(
+                              future: _productService.getProducts(sellerId: currentUser.id),
                               builder: (context, snapshot) {
                                 if (snapshot.connectionState == ConnectionState.waiting) {
                                   return const Center(child: CircularProgressIndicator());
@@ -163,13 +162,13 @@ class _JualanScreenState extends State<JualanScreen> with SingleTickerProviderSt
                                   controller: _tabController,
                                   children: [
                                     _buildProductList(
-                                      snapshot.data!.where((p) => p.status == 'aktif').toList(),
+                                      snapshot.data!.where((p) => p.isActive).toList(),
                                     ),
                                     _buildProductList(
-                                      snapshot.data!.where((p) => p.status == 'pending').toList(),
+                                      snapshot.data!.where((p) => !p.isActive).toList(),
                                     ),
                                     _buildProductList(
-                                      snapshot.data!.where((p) => p.status == 'terjual').toList(),
+                                      [], // No sold products tracking yet
                                     ),
                                   ],
                                 );
@@ -238,9 +237,9 @@ class _JualanScreenState extends State<JualanScreen> with SingleTickerProviderSt
             contentPadding: const EdgeInsets.all(12),
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: product.imageUrls.isNotEmpty
+              child: (product.imageUrl ?? '').isNotEmpty
                   ? Image.network(
-                      product.imageUrls[0],
+                      product.imageUrl!,
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
@@ -253,7 +252,7 @@ class _JualanScreenState extends State<JualanScreen> with SingleTickerProviderSt
                     ),
             ),
             title: Text(
-              product.name,
+              product.title,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Column(
@@ -268,16 +267,12 @@ class _JualanScreenState extends State<JualanScreen> with SingleTickerProviderSt
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.visibility, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text('${product.viewCount}'),
-                    const SizedBox(width: 12),
-                    const Icon(Icons.chat, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text('${product.chatCount}'),
-                  ],
+                Text(
+                  product.isActive ? 'Aktif' : 'Non-aktif',
+                  style: TextStyle(
+                    color: product.isActive ? Colors.green : Colors.grey,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),

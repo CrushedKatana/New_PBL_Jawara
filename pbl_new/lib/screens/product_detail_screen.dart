@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
-import '../services/product_service.dart';
-import '../services/chat_service.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import 'chat_detail_screen.dart';
@@ -16,14 +14,10 @@ class ProductDetailScreen extends StatefulWidget {
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
-  final ProductService _productService = ProductService();
-  final ChatService _chatService = ChatService();
-  final AuthService _authService = AuthService();
-
   @override
   void initState() {
     super.initState();
-    _productService.incrementViewCount(widget.product.id);
+    // View count tracking removed - can be added later
   }
 
   @override
@@ -45,21 +39,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       children: [
                         SizedBox(
                           height: 400,
-                          child: PageView.builder(
-                            itemCount: widget.product.imageUrls.length,
-                            itemBuilder: (context, index) {
-                              return Image.network(
-                                widget.product.imageUrls[index],
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: Colors.grey[200],
-                                    child: const Icon(Icons.image, size: 100),
-                                  );
-                                },
-                              );
-                            },
-                          ),
+                          child: (widget.product.imageUrl ?? '').isNotEmpty
+                              ? Image.network(
+                                  widget.product.imageUrl!,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: Colors.grey[200],
+                                      child: const Icon(Icons.image, size: 100),
+                                    );
+                                  },
+                                )
+                              : Container(
+                                  color: Colors.grey[200],
+                                  child: const Icon(Icons.image, size: 100),
+                                ),
                         ),
                         Positioned(
                           top: 16,
@@ -95,26 +90,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ],
                           ),
                         ),
-                        if (widget.product.isNew)
-                          Positioned(
-                            bottom: 16,
-                            left: 16,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFC107),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text(
-                                'Baru',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
                       ],
                     ),
 
@@ -125,7 +100,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         children: [
                           // Product Name & Price
                           Text(
-                            widget.product.name,
+                            widget.product.title,
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -154,11 +129,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          _buildInfoRow(Icons.style, 'Kondisi', widget.product.condition),
-                          if (widget.product.size != null)
-                            _buildInfoRow(Icons.straighten, 'Ukuran', widget.product.size!),
-                          _buildInfoRow(Icons.category, 'Kategori', widget.product.category),
-                          _buildInfoRow(Icons.location_on, 'Lokasi', widget.product.sellerRtRw),
+                          _buildInfoRow(Icons.location_on, 'Lokasi', widget.product.location ?? 'Tidak diketahui'),
 
                           const SizedBox(height: 20),
                           const Divider(),
@@ -174,7 +145,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            widget.product.description,
+                            widget.product.description ?? 'Tidak ada deskripsi',
                             style: const TextStyle(
                               fontSize: 14,
                               color: Colors.black87,
@@ -201,7 +172,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 radius: 25,
                                 backgroundColor: const Color(0xFF2D3FE3),
                                 child: Text(
-                                  widget.product.sellerName.substring(0, 1).toUpperCase(),
+                                  (widget.product.sellerName ?? 'U').substring(0, 1).toUpperCase(),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 20,
@@ -214,27 +185,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          widget.product.sellerName,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        if (widget.product.sellerVerified) ...[
-                                          const SizedBox(width: 4),
-                                          const Icon(
-                                            Icons.verified,
-                                            size: 18,
-                                            color: Color(0xFF2D3FE3),
-                                          ),
-                                        ],
-                                      ],
+                                    Text(
+                                      widget.product.sellerName ?? 'Unknown',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                     Text(
-                                      widget.product.sellerRtRw,
+                                      widget.product.location ?? 'Tidak diketahui',
                                       style: const TextStyle(
                                         fontSize: 14,
                                         color: Colors.grey,
@@ -275,34 +234,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () async {
-                        final currentUser = _authService.currentUser;
+                        final currentUser = AuthService.currentUser;
                         if (currentUser != null) {
-                          final userData = await _authService.getUserData(currentUser.uid);
-                          final sellerData = {
-                            'name': widget.product.sellerName,
-                            'verified': widget.product.sellerVerified,
-                          };
-                          final buyerData = {
-                            'name': userData?.name ?? '',
-                            'verified': userData?.isVerified ?? false,
-                          };
-                          
-                          final chatId = await _chatService.getOrCreateChat(
-                            currentUser.uid,
-                            widget.product.sellerId,
-                            buyerData,
-                            sellerData,
-                          );
-
+                          // Simply navigate to chat with seller
                           if (context.mounted) {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => ChatDetailScreen(
-                                  chatId: chatId,
+                                  chatId: '${currentUser.id}_${widget.product.sellerId}', // Simple chat ID
                                   otherUserId: widget.product.sellerId,
-                                  otherUserName: widget.product.sellerName,
-                                  otherUserVerified: widget.product.sellerVerified,
+                                  otherUserName: widget.product.sellerName ?? 'Unknown',
+                                  otherUserVerified: false, // No verification tracking yet
                                 ),
                               ),
                             );
