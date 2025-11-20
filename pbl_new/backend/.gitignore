@@ -1,0 +1,28 @@
+# .gitignore untuk Backend PHP
+
+# Ignore config jika ada sensitive data
+# config.php
+
+# Ignore backup database
+*.sql.backup
+*.sql.gz
+
+# Ignore log files
+*.log
+
+# Ignore temporary files
+*.tmp
+*.temp
+
+# Ignore uploaded files (jika ada folder upload)
+uploads/*
+!uploads/.gitkeep
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore editor files
+.vscode/
+.idea/
+*.sublime-*
