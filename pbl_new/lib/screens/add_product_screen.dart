@@ -6,6 +6,7 @@ import '../models/category_model.dart';
 import '../services/product_service.dart';
 import '../services/auth_service.dart';
 import '../services/category_service.dart';
+import 'camera_detection_screen.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -59,6 +60,47 @@ class _AddProductScreenState extends State<AddProductScreen> {
       setState(() {
         _images.add(File(pickedFile.path));
       });
+    }
+  }
+
+  Future<void> _openCameraDetection() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CameraDetectionScreen(),
+      ),
+    );
+
+    if (result != null && result is Map<String, dynamic>) {
+      setState(() {
+        // Add captured image
+        if (result['image'] != null) {
+          _images.add(result['image'] as File);
+        }
+
+        // Set detected category
+        if (result['category'] != null) {
+          final detectedCategoryName = result['category'] as String;
+          
+          // Find matching category ID
+          final matchingCategory = categories.firstWhere(
+            (cat) => cat.name.toLowerCase() == detectedCategoryName.toLowerCase(),
+            orElse: () => categories.first,
+          );
+          
+          _selectedCategory = matchingCategory.id;
+        }
+      });
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Kategori terdeteksi: ${result['category']}'),
+            backgroundColor: const Color(0xFF2D3FE3),
+          ),
+        );
+      }
     }
   }
 
@@ -157,6 +199,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
+                        _buildImagePicker(
+                          icon: Icons.auto_awesome,
+                          label: 'AI Deteksi',
+                          onTap: _openCameraDetection,
+                          isPrimary: true,
+                        ),
+                        const SizedBox(width: 12),
                         _buildImagePicker(
                           icon: Icons.camera_alt,
                           label: 'Kamera',
@@ -365,6 +414,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    bool isPrimary = false,
   }) {
     return Expanded(
       child: GestureDetector(
@@ -372,14 +422,28 @@ class _AddProductScreenState extends State<AddProductScreen> {
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!),
+            color: isPrimary ? const Color(0xFF2D3FE3) : Colors.white,
+            border: Border.all(
+              color: isPrimary ? const Color(0xFF2D3FE3) : Colors.grey[300]!,
+            ),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             children: [
-              Icon(icon, size: 40, color: const Color(0xFF2D3FE3)),
+              Icon(
+                icon,
+                size: 40,
+                color: isPrimary ? Colors.white : const Color(0xFF2D3FE3),
+              ),
               const SizedBox(height: 8),
-              Text(label, style: const TextStyle(fontSize: 14)),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isPrimary ? Colors.white : Colors.black87,
+                  fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
             ],
           ),
         ),
