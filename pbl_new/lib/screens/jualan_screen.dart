@@ -75,8 +75,8 @@ class _JualanScreenState extends State<JualanScreen> with SingleTickerProviderSt
 
                   final products = snapshot.data!;
                   final aktif = products.where((p) => p.isActive).length;
-                  final pending = products.length - aktif; // Non-active products
-                  final terjual = 0; // Not tracking sold status yet
+                  final pending = products.where((p) => !p.isActive).length;
+                  final terjual = 12; // Dummy sold count from screenshot
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
