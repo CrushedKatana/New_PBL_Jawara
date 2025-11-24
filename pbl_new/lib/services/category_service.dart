@@ -22,10 +22,42 @@ class CategoryService {
           return categories;
         }
       }
-      return [];
+      // Return dummy data if API fails
+      return _getDummyCategories();
     } catch (e) {
       print('Error getting categories: $e');
-      return [];
+      // Return dummy data on error
+      return _getDummyCategories();
     }
+  }
+
+  List<CategoryModel> _getDummyCategories() {
+    return [
+      CategoryModel(
+        id: '1',
+        name: 'Baju',
+        icon: '👕',
+      ),
+      CategoryModel(
+        id: '2',
+        name: 'Celana',
+        icon: '👖',
+      ),
+      CategoryModel(
+        id: '3',
+        name: 'Sepatu',
+        icon: '👟',
+      ),
+      CategoryModel(
+        id: '4',
+        name: 'Tas',
+        icon: '👜',
+      ),
+      CategoryModel(
+        id: '5',
+        name: 'Aksesoris',
+        icon: '⌚',
+      ),
+    ];
   }
 }

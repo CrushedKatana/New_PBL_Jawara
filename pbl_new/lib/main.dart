@@ -4,6 +4,8 @@ import 'screens/beranda_screen.dart';
 import 'screens/jualan_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/profil_screen.dart';
+import 'screens/rt_dashboard_screen.dart';
+import 'screens/admin_dashboard_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +30,9 @@ class MyApp extends StatelessWidget {
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  const MainScreen({super.key, this.userRole = 'warga'});
+  
+  final String userRole;
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -37,12 +41,42 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _screens = [
-    BerandaScreen(),
-    JualanScreen(),
-    ChatScreen(),
-    ProfilScreen(),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeScreens();
+  }
+
+  void _initializeScreens() {
+    switch (widget.userRole) {
+      case 'rt':
+        _screens = const [
+          RtDashboardScreen(rt: '05'),
+          JualanScreen(),
+          ChatScreen(),
+          ProfilScreen(),
+        ];
+        break;
+      case 'admin':
+        _screens = [
+          const AdminDashboardScreen(),
+          const JualanScreen(),
+          const ChatScreen(),
+          const ProfilScreen(),
+        ];
+        break;
+      case 'warga':
+      default:
+        _screens = const [
+          BerandaScreen(),
+          JualanScreen(),
+          ChatScreen(),
+          ProfilScreen(),
+        ];
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {

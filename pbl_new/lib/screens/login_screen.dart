@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'register_screen.dart';
 import 'admin_main_screen.dart';
+import 'rt_main_screen.dart';
 import '../main.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -31,23 +33,27 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleDemoLogin(String role) {
-    // Handle demo login for different roles
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Login sebagai $role')),
-    );
+    String roleKey = role.toLowerCase();
+    if (roleKey == 'rt/rw') roleKey = 'rt';
+    
+    // Set demo user di AuthService
+    AuthService.setDemoUser(roleKey);
     
     // Navigate based on role
-    if (role == 'Admin') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const AdminMainScreen()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainScreen()),
-      );
-    }
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) {
+          if (roleKey == 'admin') {
+            return const AdminMainScreen();
+          } else if (roleKey == 'rt') {
+            return const RtMainScreen();
+          } else {
+            return MainScreen(userRole: roleKey);
+          }
+        },
+      ),
+    );
   }
 
   @override
