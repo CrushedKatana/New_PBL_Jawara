@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart';
-import 'screens/beranda_screen.dart';
-import 'screens/jualan_screen.dart';
-import 'screens/chat_screen.dart';
-import 'screens/profil_screen.dart';
-import 'screens/rt_dashboard_screen.dart';
-import 'screens/admin_dashboard_screen.dart';
+import 'features/auth/screens/splash_screen.dart';
+import 'features/warga/screens/beranda_screen.dart';
+import 'features/warga/screens/jualan_screen.dart';
+import 'features/warga/screens/chat_screen.dart';
+import 'features/warga/screens/profil_screen.dart';
+import 'features/rt/screens/rt_dashboard_screen.dart';
+import 'features/admin/screens/admin_dashboard_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

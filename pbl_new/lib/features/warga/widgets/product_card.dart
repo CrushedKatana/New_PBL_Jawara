@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/product_model.dart';
+import 'package:pbl_new/core/models/product_model.dart';
 import 'package:intl/intl.dart';
 
 class ProductCard extends Widget {

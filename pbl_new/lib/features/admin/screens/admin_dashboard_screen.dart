@@ -42,10 +42,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.all(24),
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF1338BE), Color(0xFF2D3FE3)],
+                ),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 8),
                   const Text(
                     'Admin Dashboard',
                     style: TextStyle(

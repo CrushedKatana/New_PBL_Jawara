@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/product_model.dart';
-import '../services/product_service.dart';
-import '../services/auth_service.dart';
+import 'package:pbl_new/core/models/product_model.dart';
+import 'package:pbl_new/core/services/product_service.dart';
+import 'package:pbl_new/core/services/auth_service.dart';
 import 'package:intl/intl.dart';
 import 'add_product_screen.dart';
 import 'product_detail_screen.dart';

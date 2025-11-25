@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/product_model.dart';
+import 'package:pbl_new/core/models/product_model.dart';
 import 'package:intl/intl.dart';
-import '../services/auth_service.dart';
+import 'package:pbl_new/core/services/auth_service.dart';
 import 'chat_detail_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
