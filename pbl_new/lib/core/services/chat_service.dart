@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../config/api_config.dart';
-import '../models/message_model.dart';
+import 'package:pbl_new/config/api_config.dart';
+import 'package:pbl_new/core/models/message_model.dart';
 
 class ChatService {
   // Get conversation list

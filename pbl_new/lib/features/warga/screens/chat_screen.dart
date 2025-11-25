@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import 'package:pbl_new/core/services/auth_service.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});

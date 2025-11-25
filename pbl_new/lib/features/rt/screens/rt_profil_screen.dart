@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import 'package:pbl_new/core/services/auth_service.dart';
 
-class ProfilScreen extends StatefulWidget {
-  const ProfilScreen({super.key});
+class RtProfilScreen extends StatefulWidget {
+  const RtProfilScreen({super.key});
 
   @override
-  State<ProfilScreen> createState() => _ProfilScreenState();
+  State<RtProfilScreen> createState() => _RtProfilScreenState();
 }
 
-class _ProfilScreenState extends State<ProfilScreen> {
-  bool _notificationsEnabled = true;
-
+class _RtProfilScreenState extends State<RtProfilScreen> {
   @override
   Widget build(BuildContext context) {
     final currentUser = AuthService.currentUser;
@@ -65,112 +63,38 @@ class _ProfilScreenState extends State<ProfilScreen> {
                                 ),
                               ],
                             ),
-                            child: Column(
+                            child: Row(
                               children: [
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 35,
-                                      backgroundColor: const Color(0xFF2D3FE3),
-                                      child: Text(
-                                        currentUser.name.substring(0, 2).toUpperCase(),
-                                        style: const TextStyle(
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
+                                CircleAvatar(
+                                  radius: 35,
+                                  backgroundColor: const Color(0xFF2D3FE3),
+                                  child: Text(
+                                    currentUser.name.substring(0, 2).toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
                                     ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            currentUser.name,
-                                            style: const TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          const Text(
-                                            'Warga',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[50],
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.verified,
-                                        color: Color(0xFF2D3FE3),
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Text(
-                                        'Status Verifikasi',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green[100],
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: Text(
-                                          'Terverifikasi',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.green[700],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[50],
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                                const SizedBox(width: 16),
+                                Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text(
-                                        'Wilayah',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey,
+                                      Text(
+                                        currentUser.name,
+                                        style: const TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(
-                                        currentUser.address ?? 'RT 05 / RW 02, Kelurahan Maju Jaya',
-                                        style: const TextStyle(
+                                      const Text(
+                                        'Ketua RT 05',
+                                        style: TextStyle(
                                           fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.black87,
+                                          color: Colors.grey,
                                         ),
                                       ),
                                     ],
@@ -181,20 +105,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
                           ),
 
                           const SizedBox(height: 24),
-
-                          // Stats
-                          Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 20),
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _buildStatItem(Icons.shopping_bag, '12', 'Terjual'),
-                                _buildStatItem(Icons.favorite, '28', 'Favorit'),
-                                _buildStatItem(Icons.star, '4.8', 'Rating'),
-                              ],
-                            ),
-                          ),
 
                           const Divider(height: 1),
 
@@ -298,31 +208,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 ),
               ),
       ),
-    );
-  }
-
-  Widget _buildStatItem(IconData icon, String value, String label) {
-    return Column(
-      children: [
-        Icon(icon, color: const Color(0xFF2D3FE3), size: 28),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
-        ),
-      ],
     );
   }
 }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/category_model.dart';
-import '../models/product_model.dart';
-import '../services/product_service.dart';
-import '../services/category_service.dart';
-import '../widgets/product_card.dart';
+import 'package:pbl_new/core/models/category_model.dart';
+import 'package:pbl_new/core/models/product_model.dart';
+import 'package:pbl_new/core/services/product_service.dart';
+import 'package:pbl_new/core/services/category_service.dart';
+import 'package:pbl_new/features/warga/widgets/product_card.dart';
 import 'product_detail_screen.dart';
 
 class BerandaScreen extends StatefulWidget {

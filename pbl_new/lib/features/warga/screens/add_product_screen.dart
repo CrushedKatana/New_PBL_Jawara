@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '../models/product_model.dart';
-import '../models/category_model.dart';
-import '../services/product_service.dart';
-import '../services/auth_service.dart';
-import '../services/category_service.dart';
+import 'package:pbl_new/core/models/product_model.dart';
+import 'package:pbl_new/core/models/category_model.dart';
+import 'package:pbl_new/core/services/product_service.dart';
+import 'package:pbl_new/core/services/auth_service.dart';
+import 'package:pbl_new/core/services/category_service.dart';
 import 'camera_detection_screen.dart';
 
 class AddProductScreen extends StatefulWidget {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import 'login_screen.dart';
+import 'package:pbl_new/core/services/auth_service.dart';
+import 'package:pbl_new/features/auth/screens/login_screen.dart';
 
 class AdminProfileScreen extends StatelessWidget {
   const AdminProfileScreen({super.key});
@@ -14,20 +14,30 @@ class AdminProfileScreen extends StatelessWidget {
           children: [
             // Header with profile
             Container(
-              padding: const EdgeInsets.all(24),
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF1338BE), Color(0xFF2D3FE3)],
+                ),
+              ),
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-                  const Text(
-                    'Profil',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Profil',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 32),
-                  
                   // Profile Card
                   Container(
                     padding: const EdgeInsets.all(24),
@@ -42,7 +52,11 @@ class AdminProfileScreen extends StatelessWidget {
                           width: 72,
                           height: 72,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2D3FE3),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF2D3FE3), Color(0xFF1338BE)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
                             shape: BoxShape.circle,
                           ),
                           child: const Center(
@@ -57,7 +71,6 @@ class AdminProfileScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        
                         // Name and role
                         Expanded(
                           child: Column(

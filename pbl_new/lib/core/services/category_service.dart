@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../config/api_config.dart';
-import '../models/category_model.dart';
+import 'package:pbl_new/config/api_config.dart';
+import 'package:pbl_new/core/models/category_model.dart';
 
 class CategoryService {
   // Get all categories
