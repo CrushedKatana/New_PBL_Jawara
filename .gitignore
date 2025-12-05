@@ -1,3 +1,11 @@
+# Sensitive Files - Credentials and Testing Data
+USERS_CREDENTIALS.md
+credentials.json
+secrets.json
+.env
+.env.local
+.env.*.local
+
 # ML Training - Exclude large datasets and models
 ml_training/dataset/
 ml_training/filtered_images/
