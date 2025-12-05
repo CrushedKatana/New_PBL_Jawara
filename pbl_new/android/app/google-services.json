@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "677255228952",
+    "project_id": "pbljawara",
+    "storage_bucket": "pbljawara.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:677255228952:android:fd9341a1c783a139615d6d",
+        "android_client_info": {
+          "package_name": "com.example.pbl_new"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCIVFcSXlbkzVS8cZLQowiAoKwsdhDlCPk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
