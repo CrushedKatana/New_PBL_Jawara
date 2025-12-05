@@ -40,6 +40,21 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    packagingOptions {
+        exclude("com/google/firebase/iid/FirebaseInstanceIdReceiver.class")
+    }
+
+    configurations {
+        all {
+            exclude(group = "com.google.firebase", module = "firebase-iid")
+        }
+    }
+}
+
+dependencies {
+    // Use newer firebase-messaging that doesn't depend on old firebase-iid
+    implementation("com.google.firebase:firebase-messaging:24.1.2")
 }
 
 flutter {
