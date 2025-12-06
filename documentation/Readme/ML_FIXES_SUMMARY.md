@@ -16,9 +16,9 @@
 
 **Import Baru:**
 ```dart
-import 'features/warga/screens/clothing_detection_screen.dart';
-import 'features/warga/screens/clothing_detection_history_screen.dart';
-import 'features/admin/screens/ml_statistics_screen.dart';
+import '../../pbl_new/Readme/features/warga/screens/clothing_detection_screen.dart';
+import '../../pbl_new/Readme/features/warga/screens/clothing_detection_history_screen.dart';
+import '../../pbl_new/Readme/features/admin/screens/ml_statistics_screen.dart';
 ```
 
 **Routing Baru:**
