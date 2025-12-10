@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 
 /// Screen untuk admin melihat statistik ML deteksi pakaian
 class MLStatisticsScreen extends StatefulWidget {
-  const MLStatisticsScreen({Key? key}) : super(key: key);
+  const MLStatisticsScreen({super.key});
 
   @override
   State<MLStatisticsScreen> createState() => _MLStatisticsScreenState();

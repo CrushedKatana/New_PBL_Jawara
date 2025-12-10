@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:pbl_new/core/models/category_model.dart';
 import 'package:pbl_new/core/models/product_model.dart';
@@ -7,7 +6,6 @@ import 'package:pbl_new/core/services/notification_service.dart';
 import 'package:pbl_new/core/services/product_service.dart';
 import 'package:pbl_new/features/warga/widgets/product_card.dart';
 
-import '../../../services/firebase_service.dart';
 import 'notifikasi_screen.dart';
 import 'product_detail_screen.dart';
 
@@ -183,60 +181,67 @@ class _BerandaScreenState extends State<BerandaScreen> {
                   ),
                   SizedBox(
                     height: 120,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: categories.length,
-                      itemBuilder: (context, index) {
-                        final category = categories[index];
-                        final isSelected = selectedCategory == category.id;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              selectedCategory = isSelected ? null : category.id;
-                            });
-                          },
-                          child: Container(
-                            width: 90,
-                            margin: const EdgeInsets.only(right: 12),
-                            child: Column(
-                              children: [
-                                Container(
-                                  width: 70,
-                                  height: 70,
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? const Color(0xFF2D3FE3) : Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.05),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 2),
+                    child: categories.isEmpty
+                        ? const Center(child: Text('Kategori belum tersedia'))
+                        : ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: categories.length,
+                            itemBuilder: (context, index) {
+                              final category = categories[index];
+                              final isSelected = selectedCategory == category.id;
+                              final displayIcon = (category.icon != null && category.icon!.isNotEmpty)
+                                  ? category.icon!
+                                  : (category.name.isNotEmpty ? category.name[0].toUpperCase() : '•');
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selectedCategory = isSelected ? null : category.id;
+                                  });
+                                },
+                                child: Container(
+                                  width: 90,
+                                  margin: const EdgeInsets.only(right: 12),
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        width: 70,
+                                        height: 70,
+                                        decoration: BoxDecoration(
+                                          color: isSelected ? const Color(0xFF2D3FE3) : Colors.white,
+                                          borderRadius: BorderRadius.circular(16),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.05),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            displayIcon,
+                                            style: const TextStyle(fontSize: 28),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        category.name,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
-                                  child: Center(
-                                    child: Text(
-                                      category.icon ?? '📦',
-                                      style: const TextStyle(fontSize: 32),
-                                    ),
-                                  ),
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  category.name,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
@@ -276,12 +281,21 @@ class _BerandaScreenState extends State<BerandaScreen> {
                   return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
                 }
                 final products = snapshot.data ?? [];
+                if (products.isEmpty) {
+                  return const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      child: Text('Belum ada produk. Tambahkan produk baru untuk mulai jualan.'),
+                    ),
+                  );
+                }
                 return SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   sliver: SliverGrid(
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      childAspectRatio: 0.68,
+                      // Lebih tinggi supaya teks tidak overflow
+                      childAspectRatio: 0.6,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                     ),
@@ -306,41 +320,6 @@ class _BerandaScreenState extends State<BerandaScreen> {
                 );
               },
             ),
-            // Firestore latest products demo list
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseService.instance.watchLatestProducts(limit: 6),
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
-                }
-                final docs = snap.data?.docs ?? [];
-                return SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 12),
-                        const Text('Realtime Produk (Firestore Demo)', style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        if (docs.isEmpty)
-                          const Text('Belum ada data Firestore, tekan tombol tambah di bawah.')
-                        else
-                          ...docs.map((d) {
-                            final data = d.data() as Map<String, dynamic>;
-                            return ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(data['name'] ?? 'Tanpa Nama'),
-                              subtitle: Text('Harga: ${data['price'] ?? '-'}'),
-                            );
-                          }),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-
             // CTA Jual Pakaian
             SliverToBoxAdapter(
               child: Container(
@@ -397,202 +376,6 @@ class _BerandaScreenState extends State<BerandaScreen> {
             ),
 
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
-            
-            // Firestore Demo Section (Fashion Categories)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '🔥 Firestore Demo - Fashion Items',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            await FirebaseService.instance.addProduct({
-                              'title': 'T-Shirt Polos Premium',
-                              'price': 89000,
-                              'category': 'T-Shirt',
-                              'seller': 'Demo Store',
-                              'createdAt': FieldValue.serverTimestamp(),
-                            });
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('T-Shirt added to Firestore!')),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.checkroom, size: 18),
-                          label: const Text('+ T-Shirt'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2196F3),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            await FirebaseService.instance.addProduct({
-                              'title': 'Topi Baseball NY',
-                              'price': 125000,
-                              'category': 'Topi',
-                              'seller': 'Demo Store',
-                              'createdAt': FieldValue.serverTimestamp(),
-                            });
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Topi added to Firestore!')),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.sports_baseball, size: 18),
-                          label: const Text('+ Topi'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE91E63),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            await FirebaseService.instance.addProduct({
-                              'title': 'Kemeja Flanel Premium',
-                              'price': 145000,
-                              'category': 'Kemeja',
-                              'seller': 'Demo Store',
-                              'createdAt': FieldValue.serverTimestamp(),
-                            });
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Kemeja added to Firestore!')),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.person, size: 18),
-                          label: const Text('+ Kemeja'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4CAF50),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            await FirebaseService.instance.addProduct({
-                              'title': 'Sepatu Sneakers Original',
-                              'price': 899000,
-                              'category': 'Sepatu',
-                              'seller': 'Demo Store',
-                              'createdAt': FieldValue.serverTimestamp(),
-                            });
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Sepatu added to Firestore!')),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.sports_soccer, size: 18),
-                          label: const Text('+ Sepatu'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF9800),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseService.instance.watchLatestProducts(limit: 10),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
-                          return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(20),
-                              child: Text('Tekan tombol di atas untuk menambah produk ke Firestore'),
-                            ),
-                          );
-                        }
-                        final docs = snapshot.data!.docs;
-                        if (docs.isEmpty) {
-                          return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(20),
-                              child: Text('Belum ada produk. Tambahkan produk demo!'),
-                            ),
-                          );
-                        }
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '📦 Live dari Firestore (${docs.length} items)',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              ...docs.map((doc) {
-                                final data = doc.data() as Map<String, dynamic>;
-                                return ListTile(
-                                  dense: true,
-                                  leading: CircleAvatar(
-                                    backgroundColor: const Color(0xFF2D3FE3).withOpacity(0.1),
-                                    child: const Icon(Icons.shopping_bag, size: 20, color: Color(0xFF2D3FE3)),
-                                  ),
-                                  title: Text(
-                                    data['title'] ?? 'No title',
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                                  ),
-                                  subtitle: Text(
-                                    '${data['category'] ?? 'Unknown'} - Rp ${data['price'] ?? 0}',
-                                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                                  ),
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                                    onPressed: () async {
-                                      await FirebaseService.instance.deleteProduct(doc.id);
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Produk dihapus dari Firestore')),
-                                        );
-                                      }
-                                    },
-                                  ),
-                                );
-                              }),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
             
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
           ],

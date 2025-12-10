@@ -50,8 +50,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
   Future<void> _pickImages() async {
     final pickedFiles = await _picker.pickMultiImage();
     if (pickedFiles.isNotEmpty) {
+      final files = pickedFiles.map((file) => File(file.path)).toList();
       setState(() {
-        _images = pickedFiles.map((file) => File(file.path)).toList();
+        _images = [..._images, ...files].take(8).toList();
       });
     }
   }
@@ -60,7 +61,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final pickedFile = await _picker.pickImage(source: ImageSource.camera);
     if (pickedFile != null) {
       setState(() {
-        _images.add(File(pickedFile.path));
+        if (_images.length < 8) {
+          _images.add(File(pickedFile.path));
+        }
       });
     }
   }
@@ -77,7 +80,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       setState(() {
         // Add captured image
         if (result['image'] != null) {
-          _images.add(result['image'] as File);
+          if (_images.length < 8) {
+            _images.add(result['image'] as File);
+          }
         }
 
         // Set detected category
@@ -134,7 +139,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
         sellerName: currentUser.name,
         location: currentUser.address,
         // imageUrl will be set later when implementing image upload
-        imageUrl: '',
+        imageUrl: _images.isNotEmpty ? _images.first.path : '',
+        imageUrls: _images.map((f) => f.path).toList(),
       );
 
       final result = await _productService.addProduct(product);
@@ -224,7 +230,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     if (_images.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       SizedBox(
-                        height: 100,
+                        height: 110,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           itemCount: _images.length,
@@ -270,6 +276,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           },
                         ),
                       ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '${_images.length}/8 foto',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ),
                     ],
 
                     const SizedBox(height: 24),
@@ -292,7 +305,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     const Text('Kategori', style: TextStyle(fontSize: 14)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: _selectedCategory,
+                      initialValue: _selectedCategory,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                       ),

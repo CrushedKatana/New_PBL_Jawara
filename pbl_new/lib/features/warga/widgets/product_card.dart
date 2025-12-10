@@ -1,6 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:pbl_new/core/models/product_model.dart';
 import 'package:intl/intl.dart';
+import 'package:pbl_new/core/models/product_model.dart';
 
 class ProductCard extends StatelessWidget {
   final ProductModel product;
@@ -15,6 +17,8 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final primaryImage = (product.imageUrls.isNotEmpty ? product.imageUrls.first : product.imageUrl) ?? '';
+    final isRemote = primaryImage.startsWith('http');
 
     return GestureDetector(
       onTap: onTap,
@@ -42,18 +46,30 @@ class ProductCard extends StatelessWidget {
                     children: [
                       ClipRRect(
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                        child: product.imageUrl != null && product.imageUrl!.isNotEmpty
-                            ? Image.network(
-                                product.imageUrl!,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: Colors.grey[200],
-                                    child: const Icon(Icons.image, size: 50, color: Colors.grey),
-                                  );
-                                },
-                              )
+                        child: primaryImage.isNotEmpty
+                            ? (isRemote
+                                ? Image.network(
+                                    primaryImage,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Colors.grey[200],
+                                        child: const Icon(Icons.image, size: 50, color: Colors.grey),
+                                      );
+                                    },
+                                  )
+                                : Image.file(
+                                    File(primaryImage),
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Colors.grey[200],
+                                        child: const Icon(Icons.image, size: 50, color: Colors.grey),
+                                      );
+                                    },
+                                  ))
                             : Container(
                                 color: Colors.grey[200],
                                 child: const Icon(Icons.image, size: 50, color: Colors.grey),

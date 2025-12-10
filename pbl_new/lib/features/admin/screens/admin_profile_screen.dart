@@ -142,7 +142,7 @@ class AdminProfileScreen extends StatelessWidget {
                         onChanged: (value) {
                           // Toggle dark mode
                         },
-                        activeColor: const Color(0xFF2D3FE3),
+                        activeThumbColor: const Color(0xFF2D3FE3),
                       ),
                     ),
                     const SizedBox(height: 12),

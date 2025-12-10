@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/services/clothing_detection_service.dart';
 
@@ -20,6 +21,7 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
   String? _detectedCategory;
   double _confidence = 0.0;
   File? _capturedImage;
+  final ImagePicker _picker = ImagePicker();
 
   // PCVK Categories dari model ML
   final Map<String, String> _pcvkMapping = {
@@ -115,6 +117,24 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
         _confidence = 0.5;
       });
     } finally {
+      setState(() {
+        _isDetecting = false;
+      });
+    }
+  }
+
+  Future<void> _pickFromGalleryAndDetect() async {
+    if (_isDetecting) return;
+    try {
+      final XFile? file = await _picker.pickImage(source: ImageSource.gallery);
+      if (file == null) return;
+      final imageFile = File(file.path);
+      setState(() {
+        _capturedImage = imageFile;
+        _isDetecting = true;
+      });
+      await _detectCategory(imageFile);
+    } catch (e) {
       setState(() {
         _isDetecting = false;
       });
@@ -362,33 +382,24 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
                             ),
                           ),
 
-                          // PCVK Active Button
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
+                          // PCVK Active Button (pick from gallery)
+                          ElevatedButton.icon(
+                            onPressed: _isDetecting ? null : _pickFromGalleryAndDetect,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2D3FE3),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
                             ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2D3FE3),
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(
-                                  Icons.auto_awesome,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'PCVK Active',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
+                            icon: const Icon(Icons.photo_library, color: Colors.white, size: 20),
+                            label: const Text(
+                              'PCVK Active',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],

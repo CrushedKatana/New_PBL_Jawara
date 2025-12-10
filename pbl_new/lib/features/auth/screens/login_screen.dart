@@ -90,28 +90,26 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _handleDemoLogin(String role) {
+  Future<void> _handleDemoLogin(String role) async {
     String roleKey = role.toLowerCase();
     if (roleKey == 'rt/rw') roleKey = 'rt';
     
-    // Set demo user di AuthService
-    AuthService.setDemoUser(roleKey);
+    // Use real database credentials (password: password123)
+    String demoEmail = '';
+    if (roleKey == 'admin') {
+      demoEmail = 'admin@jawara.com';
+    } else if (roleKey == 'rt') {
+      demoEmail = 'budi.rt05@jawara.com'; // RT 05
+    } else {
+      demoEmail = 'aminah@jawara.com'; // warga di RT 05
+    }
     
-    // Navigate based on role
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) {
-          if (roleKey == 'admin') {
-            return const AdminMainScreen();
-          } else if (roleKey == 'rt') {
-            return const RtMainScreen();
-          } else {
-            return MainScreen(userRole: roleKey);
-          }
-        },
-      ),
-    );
+    // Auto-fill and login
+    _emailController.text = demoEmail;
+    _passwordController.text = 'password123';
+    
+    // Trigger login
+    await _handleLogin();
   }
 
   @override

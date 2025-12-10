@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:pbl_new/core/models/product_model.dart';
-import 'package:pbl_new/core/services/product_service.dart';
-import 'package:pbl_new/core/services/auth_service.dart';
 import 'package:intl/intl.dart';
+import 'package:pbl_new/core/models/product_model.dart';
+import 'package:pbl_new/core/services/auth_service.dart';
+import 'package:pbl_new/core/services/product_service.dart';
+
 import 'add_product_screen.dart';
 import 'product_detail_screen.dart';
 
@@ -76,7 +79,7 @@ class _JualanScreenState extends State<JualanScreen> with SingleTickerProviderSt
                   final products = snapshot.data!;
                   final aktif = products.where((p) => p.isActive).length;
                   final pending = products.where((p) => !p.isActive).length;
-                  final terjual = 12; // Dummy sold count from screenshot
+                  final terjual = 0; // Belum ada tracking penjualan
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -237,19 +240,7 @@ class _JualanScreenState extends State<JualanScreen> with SingleTickerProviderSt
             contentPadding: const EdgeInsets.all(12),
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: (product.imageUrl ?? '').isNotEmpty
-                  ? Image.network(
-                      product.imageUrl!,
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                    )
-                  : Container(
-                      width: 80,
-                      height: 80,
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.image),
-                    ),
+              child: _buildThumb(product),
             ),
             title: Text(
               product.title,
@@ -340,5 +331,45 @@ class _JualanScreenState extends State<JualanScreen> with SingleTickerProviderSt
         ],
       ),
     );
+  }
+
+  Widget _buildThumb(ProductModel product) {
+    final primaryImage = (product.imageUrls.isNotEmpty ? product.imageUrls.first : product.imageUrl) ?? '';
+    final isRemote = primaryImage.startsWith('http');
+
+    if (primaryImage.isEmpty) {
+      return Container(
+        width: 80,
+        height: 80,
+        color: Colors.grey[200],
+        child: const Icon(Icons.image),
+      );
+    }
+
+    return isRemote
+        ? Image.network(
+            primaryImage,
+            width: 80,
+            height: 80,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              width: 80,
+              height: 80,
+              color: Colors.grey[200],
+              child: const Icon(Icons.image),
+            ),
+          )
+        : Image.file(
+            File(primaryImage),
+            width: 80,
+            height: 80,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              width: 80,
+              height: 80,
+              color: Colors.grey[200],
+              child: const Icon(Icons.image),
+            ),
+          );
   }
 }

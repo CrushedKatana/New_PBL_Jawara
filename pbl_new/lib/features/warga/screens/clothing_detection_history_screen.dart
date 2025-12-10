@@ -7,9 +7,9 @@ class ClothingDetectionHistoryScreen extends StatefulWidget {
   final int userId;
 
   const ClothingDetectionHistoryScreen({
-    Key? key,
+    super.key,
     required this.userId,
-  }) : super(key: key);
+  });
 
   @override
   State<ClothingDetectionHistoryScreen> createState() =>
@@ -122,7 +122,7 @@ class _ClothingDetectionHistoryScreenState
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ],
         ),

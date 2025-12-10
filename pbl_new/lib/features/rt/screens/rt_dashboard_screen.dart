@@ -1,39 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:pbl_new/core/services/auth_service.dart';
+import 'package:pbl_new/core/services/rt_service.dart';
+
 import 'rt_warga_list_screen.dart';
-
-/// Model untuk metrik dashboard RT/RW
-class DashboardMetrics {
-  final int totalWarga;
-  final int wargaTerverifikasi;
-  final int produkAktif;
-  final int transaksiBulanIni;
-  final String wargaGrowth;
-  final String produkGrowth;
-  final String transaksiGrowth;
-
-  DashboardMetrics({
-    required this.totalWarga,
-    required this.wargaTerverifikasi,
-    required this.produkAktif,
-    required this.transaksiBulanIni,
-    required this.wargaGrowth,
-    required this.produkGrowth,
-    required this.transaksiGrowth,
-  });
-}
-
-/// Model untuk aktivitas terbaru
-class ActivityItem {
-  final String type; // 'warning', 'register', 'success'
-  final String message;
-  final String timeAgo;
-
-  ActivityItem({
-    required this.type,
-    required this.message,
-    required this.timeAgo,
-  });
-}
 
 class RtDashboardScreen extends StatefulWidget {
   const RtDashboardScreen({super.key, this.rt});
@@ -44,9 +13,11 @@ class RtDashboardScreen extends StatefulWidget {
 }
 
 class _RtDashboardScreenState extends State<RtDashboardScreen> {
-  late DashboardMetrics _metrics;
-  late List<ActivityItem> _activities;
+  final RtService _rtService = RtService();
+  RtMetricsModel? _metrics;
+  List<ActivityModel> _activities = [];
   bool _loading = true;
+  String _error = '';
 
   @override
   void initState() {
@@ -55,38 +26,36 @@ class _RtDashboardScreenState extends State<RtDashboardScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 400));
+    setState(() {
+      _loading = true;
+      _error = '';
+    });
     
-    _metrics = DashboardMetrics(
-      totalWarga: 142,
-      wargaTerverifikasi: 138,
-      produkAktif: 67,
-      transaksiBulanIni: 234,
-      wargaGrowth: '+5',
-      produkGrowth: '+12',
-      transaksiGrowth: '+18%',
-    );
-    
-    _activities = [
-      ActivityItem(
-        type: 'warning',
-        message: 'Produk dari Ibu Siti menunggu approval',
-        timeAgo: '10 menit lalu',
-      ),
-      ActivityItem(
-        type: 'register',
-        message: 'Warga baru mendaftar: Budi Santoso',
-        timeAgo: '1 jam lalu',
-      ),
-      ActivityItem(
-        type: 'success',
-        message: 'Transaksi berhasil: Kaos Polos - Rp 45.000',
-        timeAgo: '2 jam lalu',
-      ),
-    ];
-    
-    setState(() => _loading = false);
+    try {
+      final currentUser = AuthService.currentUser;
+      final rt = widget.rt ?? currentUser?.rt ?? '01';
+      
+      // Fetch metrics
+      final metrics = await _rtService.getRtMetrics(rt);
+      
+      // Fetch activities
+      final activities = await _rtService.getActivities(rt: rt, limit: 10);
+      
+      if (mounted) {
+        setState(() {
+          _metrics = metrics;
+          _activities = activities;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Gagal memuat data: $e';
+          _loading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -169,14 +138,20 @@ class _RtDashboardScreenState extends State<RtDashboardScreen> {
   }
 
   Widget _buildStats() {
+    if (_metrics == null) {
+      return const Center(
+        child: Text('Data metrics tidak tersedia'),
+      );
+    }
+    
     return Wrap(
       spacing: 16,
       runSpacing: 16,
       children: [
-        _statCard(Icons.group, 'Total Warga', _metrics.totalWarga.toString(), _metrics.wargaGrowth),
-        _statCard(Icons.verified, 'Terverifikasi', _metrics.wargaTerverifikasi.toString(), _metrics.wargaGrowth),
-        _statCard(Icons.inventory_2, 'Produk Aktif', _metrics.produkAktif.toString(), _metrics.produkGrowth),
-        _statCard(Icons.show_chart, 'Transaksi Bulan Ini', _metrics.transaksiBulanIni.toString(), _metrics.transaksiGrowth),
+        _statCard(Icons.group, 'Total Warga', _metrics!.totalWarga.toString(), ''),
+        _statCard(Icons.inventory_2, 'Produk Aktif', _metrics!.totalProduk.toString(), ''),
+        _statCard(Icons.pending_actions, 'Pending Approval', _metrics!.pendingApproval.toString(), ''),
+        _statCard(Icons.show_chart, 'Transaksi Bulan Ini', _metrics!.totalTransaksi.toString(), ''),
       ],
     );
   }
@@ -355,31 +330,52 @@ class _RtDashboardScreenState extends State<RtDashboardScreen> {
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        ..._activities.map(_activityTile).toList(),
+        if (_activities.isEmpty)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Text('Belum ada aktivitas'),
+            ),
+          )
+        else
+          ..._activities.map(_activityTile),
       ],
     );
   }
 
-  Widget _activityTile(ActivityItem item) {
+  Widget _activityTile(ActivityModel item) {
     Color bg;
     IconData icon;
     Color iconColor;
-    switch (item.type) {
-      case 'warning':
+    
+    // Map activity type to UI
+    switch (item.activityType.toLowerCase()) {
+      case 'product_approval':
+      case 'product_pending':
         bg = Colors.yellow.withValues(alpha: 0.15);
-        icon = Icons.error_outline;
+        icon = Icons.inventory_outlined;
         iconColor = Colors.orange;
         break;
-      case 'register':
+      case 'user_registration':
+      case 'user_verification':
         bg = const Color(0xFF2D3FE3).withValues(alpha: 0.15);
         icon = Icons.person_add;
         iconColor = const Color(0xFF2D3FE3);
         break;
-      default:
+      case 'transaction_completed':
         bg = Colors.green.withValues(alpha: 0.15);
         icon = Icons.check_circle_outline;
         iconColor = Colors.green;
+        break;
+      default:
+        bg = Colors.grey.withValues(alpha: 0.15);
+        icon = Icons.info_outline;
+        iconColor = Colors.grey;
     }
+    
+    // Format time ago
+    String timeAgo = _formatTimeAgo(item.activityDate);
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -408,7 +404,7 @@ class _RtDashboardScreenState extends State<RtDashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.message,
+                  item.description,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
@@ -416,7 +412,7 @@ class _RtDashboardScreenState extends State<RtDashboardScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  item.timeAgo,
+                  timeAgo,
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
@@ -425,5 +421,25 @@ class _RtDashboardScreenState extends State<RtDashboardScreen> {
         ],
       ),
     );
+  }
+  
+  String _formatTimeAgo(String dateStr) {
+    try {
+      final date = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      final diff = now.difference(date);
+      
+      if (diff.inDays > 0) {
+        return '${diff.inDays} hari lalu';
+      } else if (diff.inHours > 0) {
+        return '${diff.inHours} jam lalu';
+      } else if (diff.inMinutes > 0) {
+        return '${diff.inMinutes} menit lalu';
+      } else {
+        return 'Baru saja';
+      }
+    } catch (e) {
+      return dateStr;
+    }
   }
 }

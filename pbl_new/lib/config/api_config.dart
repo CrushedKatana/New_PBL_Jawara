@@ -10,18 +10,19 @@ class ApiConfig {
 
   static final String baseUrl = _resolveBaseUrl();
 
+  // Network IP PC untuk akses dari device lain (update sesuai IP PC)
+  static const String networkIp = '192.168.1.7';
+  
   static String _resolveBaseUrl() {
     const envBase = String.fromEnvironment('API_BASE_URL');
     if (envBase.isNotEmpty) return envBase;
 
     if (kIsWeb) {
-      // Ambil origin browser, misal http://localhost:xxxx lalu tambahkan path backend.
-      final origin = Uri.base.origin; // tanpa trailing slash
-      return '$origin/jawara/backend';
+      return 'http://$networkIp/jawara/backend';
     }
 
-    // Default emulator Android
-    return 'http://10.0.2.2/jawara/backend';
+    // Mobile devices: use network IP untuk bisa diakses dari HP
+    return 'http://$networkIp/jawara/backend';
   }
 
   // Endpoints (lazy getters, karena baseUrl bukan const)
@@ -31,7 +32,14 @@ class ApiConfig {
   static String get categoriesEndpoint => '$baseUrl/categories.php';
   static String get mlDetectionEndpoint => '$baseUrl/ml_detection.php';
   static String get mlDetectionHistoryEndpoint => '$baseUrl/ml_detection_history.php';
+  static String get rtMetricsEndpoint => '$baseUrl/rt_metrics.php';
+  static String get activitiesEndpoint => '$baseUrl/activities.php';
+  static String get transactionsEndpoint => '$baseUrl/transactions.php';
+  static String get usersEndpoint => '$baseUrl/users.php';
   
   // Timeout settings
   static const Duration timeout = Duration(seconds: 30);
+  
+  // Firebase Cloud Messaging (update dengan Server Key dari Firebase Console)
+  static const String fcmServerKey = 'YOUR_FCM_SERVER_KEY_HERE';
 }

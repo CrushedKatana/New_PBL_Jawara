@@ -10,9 +10,9 @@ class ClothingDetectionScreen extends StatefulWidget {
   final int userId;
 
   const ClothingDetectionScreen({
-    Key? key,
+    super.key,
     required this.userId,
-  }) : super(key: key);
+  });
 
   @override
   State<ClothingDetectionScreen> createState() => _ClothingDetectionScreenState();
@@ -322,7 +322,7 @@ class _ClothingDetectionScreenState extends State<ClothingDetectionScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ],
         ),

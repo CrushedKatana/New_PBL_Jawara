@@ -9,6 +9,7 @@ class ProductModel {
   final String? sellerName;
   final String? sellerPhone;
   final String? imageUrl;
+  final List<String> imageUrls;
   final String? location;
   final bool isActive;
   final DateTime? createdAt;
@@ -25,6 +26,7 @@ class ProductModel {
     this.sellerName,
     this.sellerPhone,
     this.imageUrl,
+    this.imageUrls = const [],
     this.location,
     this.isActive = true,
     this.createdAt,
@@ -43,6 +45,11 @@ class ProductModel {
       sellerName: json['seller_name'],
       sellerPhone: json['seller_phone'],
       imageUrl: json['image_url'],
+        imageUrls: (json['images'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .where((e) => e.isNotEmpty)
+            .toList() ??
+          [],
       location: json['location'],
       isActive: json['is_active'] == 1 || json['is_active'] == true,
       createdAt: json['created_at'] != null 
@@ -63,6 +70,7 @@ class ProductModel {
       'category_id': categoryId,
       'seller_id': sellerId,
       'image_url': imageUrl,
+      'images': imageUrls,
       'location': location,
     };
   }
