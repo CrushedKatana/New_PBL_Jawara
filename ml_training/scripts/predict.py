@@ -27,11 +27,28 @@ def load_model_and_scaler(model_path, scaler_path):
         sys.exit(1)
 
 def load_label_mapping(mapping_path='../models/label_mapping.json'):
-    """Load label mapping"""
+    """Load label mapping with multiple fallback locations"""
     try:
-        with open(mapping_path, 'r') as f:
-            mapping = json.load(f)
-        return {int(k): v for k, v in mapping.items()}
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Try multiple locations
+        possible_paths = [
+            mapping_path,  # Original path
+            os.path.join(script_dir, mapping_path),  # Relative to script
+            os.path.join(script_dir, '..', 'models', 'label_mapping.json'),  # Explicit relative
+            os.path.join(os.path.dirname(script_dir), 'models', 'label_mapping.json'),  # Parent dir
+        ]
+        
+        # Try each path
+        for path in possible_paths:
+            if os.path.exists(path):
+                with open(path, 'r') as f:
+                    mapping = json.load(f)
+                return {int(k): v for k, v in mapping.items()}
+        
+        # If none found, raise error with attempted paths
+        raise FileNotFoundError(f"label_mapping.json not found. Tried: {possible_paths}")
+        
     except Exception as e:
         print(json.dumps({
             'success': False,
@@ -123,23 +140,45 @@ def predict(model, scaler, hog_features, label_mapping):
         # Normalize features
         hog_features_scaled = scaler.transform(hog_features)
         
-        # Get predictions
-        predictions = model.predict_proba(hog_features_scaled)
+        # Get predictions - LinearSVC uses decision_function, not predict_proba
+        if hasattr(model, 'predict_proba'):
+            # For SVC with probability=True
+            predictions = model.predict_proba(hog_features_scaled)
+            predicted_class_idx = np.argmax(predictions[0])
+            confidence = float(predictions[0][predicted_class_idx])
+            
+            # Get top 3 predictions
+            top3_indices = np.argsort(predictions[0])[-3:][::-1]
+            top3_predictions = [
+                {
+                    'class': label_mapping[idx],
+                    'confidence': float(predictions[0][idx])
+                }
+                for idx in top3_indices
+            ]
+        else:
+            # For LinearSVC - use decision_function
+            decision_scores = model.decision_function(hog_features_scaled)[0]
+            
+            # Convert decision scores to confidence-like values (0-1 range)
+            # Using softmax function
+            exp_scores = np.exp(decision_scores - np.max(decision_scores))
+            confidences = exp_scores / np.sum(exp_scores)
+            
+            predicted_class_idx = np.argmax(confidences)
+            confidence = float(confidences[predicted_class_idx])
+            
+            # Get top 3 predictions
+            top3_indices = np.argsort(confidences)[-3:][::-1]
+            top3_predictions = [
+                {
+                    'class': label_mapping[idx],
+                    'confidence': float(confidences[idx])
+                }
+                for idx in top3_indices
+            ]
         
-        # Get predicted class
-        predicted_class_idx = np.argmax(predictions[0])
         predicted_class = label_mapping[predicted_class_idx]
-        confidence = float(predictions[0][predicted_class_idx])
-        
-        # Get top 3 predictions
-        top3_indices = np.argsort(predictions[0])[-3:][::-1]
-        top3_predictions = [
-            {
-                'class': label_mapping[idx],
-                'confidence': float(predictions[0][idx])
-            }
-            for idx in top3_indices
-        ]
         
         return {
             'success': True,

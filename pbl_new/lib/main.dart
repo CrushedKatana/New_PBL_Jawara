@@ -1,7 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-import '../firebase_options.dart';
 import 'features/admin/screens/admin_dashboard_screen.dart';
 import 'features/admin/screens/ml_statistics_screen.dart';
 import 'features/auth/screens/splash_screen.dart';
@@ -20,12 +19,29 @@ import 'features/warga/screens/clothing_detection_history_screen.dart';
 import 'features/warga/screens/clothing_detection_screen.dart';
 import 'features/warga/screens/jualan_screen.dart';
 import 'features/warga/screens/profil_screen.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  
+  // Initialize Firebase with timeout and error handling
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        debugPrint('⚠️ Firebase initialization timeout - continuing without Firebase');
+        throw Exception('Firebase timeout');
+      },
+    );
+    debugPrint('✅ Firebase initialized successfully');
+  } catch (e) {
+    debugPrint('⚠️ Firebase initialization failed: $e');
+    debugPrint('📱 App will continue without Firebase features');
+    // App continues without Firebase - only affects FCM notifications
+  }
+  
   runApp(const MyApp());
 }
 

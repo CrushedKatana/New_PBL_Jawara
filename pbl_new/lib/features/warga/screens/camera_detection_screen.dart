@@ -23,12 +23,18 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
   File? _capturedImage;
   final ImagePicker _picker = ImagePicker();
 
-  // PCVK Categories dari model ML
+  // PCVK Categories - Backend sudah return Indonesian labels
+  // Mapping tetap ada untuk backward compatibility tapi include Indonesian
   final Map<String, String> _pcvkMapping = {
+    // English (old format)
     'Hat': 'Topi',
     'Shirt': 'Kemeja',
     'T-Shirt': 'Kaos',
     'Shoes': 'Sepatu',
+    // Indonesian (new format from model) - identity mapping
+    'Topi': 'Topi',
+    'Kemeja': 'Kemeja',
+    'Sepatu': 'Sepatu',
   };
 
   @override
@@ -95,6 +101,14 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
         1, // Temporary user ID
       );
 
+      print('=== ML Detection Result ===');
+      print('Full response: $result');
+      print('Success: ${result['success']}');
+      print('Predicted class: ${result['predicted_class']}');
+      print('Confidence: ${result['confidence']}');
+      print('Message: ${result['message']}');
+      print('========================');
+
       if (result['success'] == true) {
         final predictedClass = result['predicted_class'];
         final confidence = result['confidence'];
@@ -107,10 +121,11 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
           _confidence = confidence;
         });
       } else {
+        print('ERROR: Detection failed - ${result['message']}');
         throw Exception(result['message'] ?? 'Detection failed');
       }
     } catch (e) {
-      print('Error detecting category: $e');
+      print('EXCEPTION in _detectCategory: $e');
       // Fallback
       setState(() {
         _detectedCategory = 'Pakaian';

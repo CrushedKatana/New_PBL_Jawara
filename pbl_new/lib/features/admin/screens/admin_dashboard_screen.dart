@@ -937,26 +937,26 @@ class MLAnalyticsScreen extends StatelessWidget {
                 _buildMetricCard(
                   icon: Icons.check_circle,
                   color: Colors.green,
-                  value: '92.4%',
-                  label: 'Akurasi Global',
+                  value: '81.4%',
+                  label: 'Validation Acc',
                 ),
                 _buildMetricCard(
                   icon: Icons.bolt,
                   color: const Color(0xFF2D3FE3),
-                  value: '758',
-                  label: 'Total Deteksi',
+                  value: '1991',
+                  label: 'Training Images',
                 ),
                 _buildMetricCard(
-                  icon: Icons.speed,
+                  icon: Icons.category,
                   color: Colors.orange,
-                  value: '0.3s',
-                  label: 'Avg Response',
+                  value: '4',
+                  label: 'Kategori',
                 ),
                 _buildMetricCard(
-                  icon: Icons.trending_up,
+                  icon: Icons.model_training,
                   color: Colors.purple,
-                  value: '+8.2%',
-                  label: 'Improvement',
+                  value: '100%',
+                  label: 'Train Accuracy',
                 ),
               ],
             ),
@@ -1058,13 +1058,13 @@ class MLAnalyticsScreen extends StatelessWidget {
   }
 
   Widget _buildCategoryAccuracy() {
-    final categories = [
-      'T-Shirt',
-      'Kemeja',
-      'Topi',
-      'Sepatu',
-      'Jaket'
-    ];
+    // Data dari training dataset yang sebenarnya
+    final Map<String, Map<String, dynamic>> categories = {
+      'T-Shirt': {'samples': 1011, 'percentage': 50.8},
+      'Sepatu': {'samples': 431, 'percentage': 21.6},
+      'Kemeja': {'samples': 378, 'percentage': 19.0},
+      'Topi': {'samples': 171, 'percentage': 8.6},
+    };
     
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1073,7 +1073,12 @@ class MLAnalyticsScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
-        children: categories.map((category) {
+        children: categories.entries.map((entry) {
+          final category = entry.key;
+          final data = entry.value;
+          final samples = data['samples'] as int;
+          final percentage = data['percentage'] as double;
+          
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Column(
@@ -1088,17 +1093,18 @@ class MLAnalyticsScreen extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const Text(
-                      '~95%',
-                      style: TextStyle(
+                    Text(
+                      '$samples gambar (${percentage.toStringAsFixed(1)}%)',
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
+                        fontSize: 12,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
-                  value: 0.95,
+                  value: percentage / 100,
                   backgroundColor: Colors.grey[200],
                   valueColor: const AlwaysStoppedAnimation<Color>(
                     Color(0xFF2D3FE3),
@@ -1116,53 +1122,117 @@ class MLAnalyticsScreen extends StatelessWidget {
 
   Widget _buildDistributionChart() {
     return Container(
-      height: 200,
+      height: 220,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'T-Shirt 32%',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2D3FE3),
-              ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'Training Dataset Distribution',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Kemeja 23% • Sepatu 18% • Topi 12%',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'T-Shirt: 50.8% (1011 images)',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2D3FE3),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Sepatu: 21.6% (431) • Kemeja: 19.0% (378) • Topi: 8.6% (171)',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 8),
+          Text(
+            'Total: 1991 training images',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildConfusionMatrix() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(16),
       ),
-      child: const Center(
-        child: Text(
-          'Confusion Matrix visualization\n(High accuracy across all categories)',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.grey,
+      child: Column(
+        children: [
+          const Text(
+            'Model: LinearSVC (HOG + SVM)',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          const Divider(),
+          const SizedBox(height: 12),
+          _buildModelInfoRow('Training Accuracy', '100.0%', Colors.green),
+          _buildModelInfoRow('Validation Accuracy', '81.4%', Colors.blue),
+          _buildModelInfoRow('Training Samples', '1393', Colors.orange),
+          _buildModelInfoRow('Validation Samples', '199', Colors.purple),
+          const SizedBox(height: 12),
+          const Divider(),
+          const SizedBox(height: 8),
+          Text(
+            'Last trained: December 11, 2025',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModelInfoRow(String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.black87,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

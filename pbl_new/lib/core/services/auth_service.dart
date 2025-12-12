@@ -20,7 +20,12 @@ class AuthService {
           'email': email,
           'password': password,
         }),
-      ).timeout(ApiConfig.timeout);
+      ).timeout(
+        ApiConfig.timeout,
+        onTimeout: () {
+          throw Exception('Request timeout - check your internet connection');
+        },
+      );
 
       final data = json.decode(response.body);
 
@@ -31,8 +36,16 @@ class AuthService {
       } else {
         return {'success': false, 'error': data['error'] ?? 'Login failed'};
       }
+    } on Exception catch (e) {
+      String errorMsg = e.toString();
+      if (errorMsg.contains('timeout')) {
+        return {'success': false, 'error': 'Koneksi timeout. Cek internet Anda.'};
+      } else if (errorMsg.contains('SocketException') || errorMsg.contains('Failed host lookup')) {
+        return {'success': false, 'error': 'Tidak dapat terhubung ke server. Pastikan PC backend menyala dan HP terhubung WiFi yang sama.'};
+      }
+      return {'success': false, 'error': 'Error koneksi: ${e.toString()}'};
     } catch (e) {
-      return {'success': false, 'error': 'Connection error: $e'};
+      return {'success': false, 'error': 'Error tidak terduga: $e'};
     }
   }
 

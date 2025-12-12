@@ -1,0 +1,9 @@
+{
+  "timestamp": "2025-12-11 06:06:47",
+  "model_type": "LinearSVC",
+  "num_classes": 4,
+  "train_accuracy": 1.0,
+  "val_accuracy": 0.8140703517587939,
+  "num_train_samples": 1393,
+  "feature_dim": 8100
+}

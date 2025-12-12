@@ -22,7 +22,7 @@ def main():
     print("\n[1/3] Extracting HOG features...")
     preprocessor = ClothingDataPreprocessor(
         csv_path='../dataset/ml_ready_images_data.csv',
-        images_folder='../dataset/Filtered_Image'
+        base_image_dir='../dataset/Filtered_Image'
     )
     
     dataset = preprocessor.prepare_dataset(augment=False)  # No augmentation for faster training

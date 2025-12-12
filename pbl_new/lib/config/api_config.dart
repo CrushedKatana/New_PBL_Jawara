@@ -37,8 +37,9 @@ class ApiConfig {
   static String get transactionsEndpoint => '$baseUrl/transactions.php';
   static String get usersEndpoint => '$baseUrl/users.php';
   
-  // Timeout settings
-  static const Duration timeout = Duration(seconds: 30);
+  // Timeout settings - reduced for better mobile experience
+  static const Duration timeout = Duration(seconds: 15); // Reduced from 30
+  static const Duration shortTimeout = Duration(seconds: 8); // For quick operations
   
   // Firebase Cloud Messaging (update dengan Server Key dari Firebase Console)
   static const String fcmServerKey = 'YOUR_FCM_SERVER_KEY_HERE';

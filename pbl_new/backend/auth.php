@@ -73,16 +73,19 @@ function login($conn) {
     $result = $conn->query($sql);
     
     if ($result->num_rows === 0) {
+        $conn->close();
         sendJsonResponse(['success' => false, 'error' => 'User not found'], 404);
     }
     
     $user = $result->fetch_assoc();
     
     if (!password_verify($password, $user['password'])) {
+        $conn->close();
         sendJsonResponse(['success' => false, 'error' => 'Invalid password'], 401);
     }
     
     unset($user['password']); // Don't send password back
+    $conn->close();
     sendJsonResponse(['success' => true, 'data' => $user]);
 }
 

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pbl_new/config/api_config.dart';
 
 /// Screen untuk admin melihat statistik ML deteksi pakaian
 class MLStatisticsScreen extends StatefulWidget {
@@ -17,6 +18,25 @@ class _MLStatisticsScreenState extends State<MLStatisticsScreen> {
   Map<String, dynamic>? _globalStats;
   List<dynamic> _recentDetections = [];
   Map<String, int> _categoryData = {};
+  
+  // Training Dataset Info (from latest model training)
+  final Map<String, int> _trainingDataset = {
+    'Topi': 171,
+    'Kemeja': 378,
+    'Sepatu': 431,
+    'T-Shirt': 1011,
+  };
+  
+  // Model Performance Info (Updated with GridSearchCV optimized model)
+  final Map<String, dynamic> _modelPerformance = {
+    'train_accuracy': 1.0,
+    'val_accuracy': 0.8647,
+    'test_accuracy': 0.8795,
+    'model_type': 'RBF SVC (HOG+SVM)',
+    'trained_date': '2025-12-11',
+    'total_training_samples': 3982, // With augmentation
+    'best_params': 'C=10, gamma=scale, class_weight=balanced',
+  };
 
   @override
   void initState() {
@@ -32,9 +52,8 @@ class _MLStatisticsScreenState extends State<MLStatisticsScreen> {
     try {
       // Fetch real data from backend
       final response = await http.post(
-        Uri.parse('http://localhost/pbl_jawara/backend/ml_detection_history.php'),
-        body: {'action': 'get_global_stats'},
-      );
+        Uri.parse('${ApiConfig.mlDetectionHistoryEndpoint}?action=get_global_stats'),
+      ).timeout(ApiConfig.timeout);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -259,6 +278,161 @@ class _MLStatisticsScreenState extends State<MLStatisticsScreen> {
     );
   }
 
+  Widget _buildModelPerformance() {
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.model_training, color: Colors.blue),
+                SizedBox(width: 8),
+                Text(
+                  'Model Performance',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(),
+            _buildPerformanceRow('Model Type', _modelPerformance['model_type']),
+            _buildPerformanceRow('Training Accuracy', '${(_modelPerformance['train_accuracy'] * 100).toStringAsFixed(1)}%'),
+            _buildPerformanceRow('Validation Accuracy', '${(_modelPerformance['val_accuracy'] * 100).toStringAsFixed(1)}%'),
+            _buildPerformanceRow('Test Accuracy', '${(_modelPerformance['test_accuracy'] * 100).toStringAsFixed(1)}%'),
+            _buildPerformanceRow('Training Samples', '${_modelPerformance['total_training_samples']} (augmented)'),
+            _buildPerformanceRow('Best Params', _modelPerformance['best_params']),
+            _buildPerformanceRow('Last Trained', _modelPerformance['trained_date']),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildPerformanceRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildTrainingDataset() {
+    final sortedEntries = _trainingDataset.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final totalImages = _trainingDataset.values.reduce((a, b) => a + b);
+
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.dataset, color: Colors.green),
+                    SizedBox(width: 8),
+                    Text(
+                      'Training Dataset',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  'Total: $totalImages images',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(),
+            ...sortedEntries.map((entry) {
+              final percentage = (entry.value / totalImages * 100).toStringAsFixed(1);
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          entry.key,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          '${entry.value} ($percentage%)',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    LinearProgressIndicator(
+                      value: entry.value / totalImages,
+                      backgroundColor: Colors.grey[200],
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        _getCategoryColor(entry.key),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Topi':
+        return Colors.orange;
+      case 'Kemeja':
+        return Colors.blue;
+      case 'Sepatu':
+        return Colors.green;
+      case 'T-Shirt':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
   Widget _buildRecentDetections() {
     if (_recentDetections.isEmpty) return const SizedBox.shrink();
 
@@ -362,6 +536,8 @@ class _MLStatisticsScreenState extends State<MLStatisticsScreen> {
                 child: Column(
                   children: [
                     _buildOverviewCards(),
+                    _buildModelPerformance(),
+                    _buildTrainingDataset(),
                     _buildCategoryChart(),
                     _buildRecentDetections(),
                     const SizedBox(height: 16),

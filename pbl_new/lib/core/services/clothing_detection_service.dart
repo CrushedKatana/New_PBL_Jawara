@@ -1,13 +1,13 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:pbl_new/config/api_config.dart';
 
 /// Service untuk deteksi pakaian menggunakan ML model
 class ClothingDetectionService {
-  // Backend ML API endpoint
-  static const String _baseUrl = 'http://localhost/pbl_jawara/backend';
-  static const String _detectEndpoint = '$_baseUrl/ml_detection.php';
-  static const String _historyEndpoint = '$_baseUrl/ml_detection_history.php';
+  // Backend ML API endpoint (using ApiConfig)
+  static String get _detectEndpoint => ApiConfig.mlDetectionEndpoint;
+  static String get _historyEndpoint => ApiConfig.mlDetectionHistoryEndpoint;
 
   /// Deteksi kategori pakaian dari gambar
   /// 

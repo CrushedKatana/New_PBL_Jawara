@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -12,8 +13,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Navigate to login screen after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
+    // Navigate to login screen after 2 seconds (reduced from 3)
+    Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.pushReplacement(
           context,
