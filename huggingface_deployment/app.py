@@ -17,23 +17,27 @@ scaler = joblib.load('clothing_scaler_best.pkl')
 
 label_mapping = {
     0: "Topi",
-    1: "Kemeja", 
+    1: "Kemeja",
     2: "Sepatu",
-    3: "T-Shirt"
+    3: "Kaos"
 }
 
 def extract_hog_features(img, image_size=(128, 128)):
-    """Extract HOG features from image"""
+    """Extract HOG features from image - MUST match training preprocessing"""
     # Resize
     img_resized = cv2.resize(img, image_size)
     
-    # Extract HOG features
+    # CRITICAL: Histogram equalization (same as training!)
+    img_equalized = cv2.equalizeHist(img_resized)
+    
+    # Extract HOG features (EXACT match with training!)
     features = hog(
-        img_resized,
+        img_equalized,
         orientations=9,
         pixels_per_cell=(8, 8),
         cells_per_block=(2, 2),
         block_norm='L2-Hys',
+        transform_sqrt=True,  # CRITICAL: Square root normalization (from training)
         visualize=False,
         feature_vector=True
     )
@@ -55,12 +59,13 @@ def predict_clothing(image):
         if isinstance(image, Image.Image):
             image = np.array(image)
         
-        # Convert RGB to BGR for OpenCV
+        # Convert to grayscale directly from RGB (Gradio input is RGB)
         if len(image.shape) == 3 and image.shape[2] == 3:
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        
-        # Convert to grayscale
-        img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            img_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+        elif len(image.shape) == 2:
+            img_gray = image
+        else:
+            raise ValueError(f"Unexpected image shape: {image.shape}")
         
         # Extract HOG features
         hog_features = extract_hog_features(img_gray)
@@ -127,7 +132,7 @@ with gr.Blocks(title="Clothing Detection API - PCVK") as demo:
     - 🧢 **Topi** (Hat)
     - 👔 **Kemeja** (Shirt)
     - 👟 **Sepatu** (Shoes)
-    - 👕 **T-Shirt** (T-Shirt)
+    - 👕 **Kaos** (T-Shirt)
     """)
     
     with gr.Row():
@@ -153,26 +158,10 @@ with gr.Blocks(title="Clothing Detection API - PCVK") as demo:
     ```python
     import requests
     
-    url = "https://YOUR-SPACE-NAME.hf.space/api/predict"
+    url = "https://huggingface.co/spaces/CrushedKatana/clothing-detection-api"
     files = {"data": open("image.jpg", "rb")}
     response = requests.post(url, files=files)
     result = response.json()
-    ```
-    
-    **Response Format:**
-    ```json
-    {
-        "success": true,
-        "predicted_class": "Topi",
-        "confidence": 0.76,
-        "top3_predictions": [
-            {"class": "Topi", "confidence": 0.76},
-            {"class": "T-Shirt", "confidence": 0.10},
-            {"class": "Sepatu", "confidence": 0.09}
-        ],
-        "method": "HOG + SVM"
-    }
-    ```
     
     ---
     **Model Info:**

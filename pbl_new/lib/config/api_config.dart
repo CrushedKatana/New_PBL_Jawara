@@ -30,7 +30,13 @@ class ApiConfig {
   static String get authEndpoint => '$baseUrl/auth.php';
   static String get chatEndpoint => '$baseUrl/chat.php';
   static String get categoriesEndpoint => '$baseUrl/categories.php';
-  static String get mlDetectionEndpoint => '$baseUrl/ml_detection.php';
+  
+  // ML Detection - Hugging Face Space with Docker (Direct API, no queue!)
+  static String get mlDetectionEndpoint => 'https://crushedkatana-clothing-detection.hf.space/detect';
+  // Local wrapper: 'http://$networkIp:5000/detect'
+  // Mock: 'http://$networkIp/jawara/backend/ml_detection_mock.php'
+  
+  // ML History - still using PHP backend
   static String get mlDetectionHistoryEndpoint => '$baseUrl/ml_detection_history.php';
   static String get rtMetricsEndpoint => '$baseUrl/rt_metrics.php';
   static String get activitiesEndpoint => '$baseUrl/activities.php';

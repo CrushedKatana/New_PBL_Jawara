@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/services/clothing_detection_service.dart';
@@ -23,24 +24,47 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
   File? _capturedImage;
   final ImagePicker _picker = ImagePicker();
 
-  // PCVK Categories - Backend sudah return Indonesian labels
-  // Mapping tetap ada untuk backward compatibility tapi include Indonesian
+  // PCVK Categories - Hugging Face API returns Indonesian labels
   final Map<String, String> _pcvkMapping = {
-    // English (old format)
+    // English (old backend format - for backward compatibility)
     'Hat': 'Topi',
     'Shirt': 'Kemeja',
-    'T-Shirt': 'Kaos',
+    'T-Shirt': 'T-Shirt',  // Keep as is from API
     'Shoes': 'Sepatu',
-    // Indonesian (new format from model) - identity mapping
+    // Indonesian (Hugging Face API format) - identity mapping
     'Topi': 'Topi',
     'Kemeja': 'Kemeja',
     'Sepatu': 'Sepatu',
+    // Alternative spellings
+    'Kaos': 'T-Shirt',
   };
 
   @override
   void initState() {
     super.initState();
+    _testApiConnection();
     _initializeCamera();
+  }
+
+  Future<void> _testApiConnection() async {
+    try {
+      print('🧪 Testing API connection...');
+      final response = await http.get(Uri.parse('http://192.168.1.7:5000/health')).timeout(
+        const Duration(seconds: 5),
+      );
+      print('✅ API Health: ${response.statusCode} - ${response.body}');
+    } catch (e) {
+      print('❌ API Connection failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Warning: Cannot connect to ML API. Check network connection.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _initializeCamera() async {
@@ -103,27 +127,49 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
 
       print('=== ML Detection Result ===');
       print('Full response: $result');
+      print('Response type: ${result.runtimeType}');
       print('Success: ${result['success']}');
       print('Predicted class: ${result['predicted_class']}');
       print('Confidence: ${result['confidence']}');
       print('Message: ${result['message']}');
       print('========================');
 
-      if (result['success'] == true) {
+      // Check if result is valid
+      if (result['success'] == true && result.containsKey('predicted_class')) {
         final predictedClass = result['predicted_class'];
         final confidence = result['confidence'];
 
-        // Map PCVK categories to Indonesian
-        final mappedCategory = _pcvkMapping[predictedClass] ?? predictedClass;
+        if (predictedClass != null && confidence != null) {
+          // Map PCVK categories to Indonesian
+          final mappedCategory = _pcvkMapping[predictedClass] ?? predictedClass;
 
-        setState(() {
-          _detectedCategory = mappedCategory;
-          _confidence = confidence;
-        });
-      } else {
-        print('ERROR: Detection failed - ${result['message']}');
-        throw Exception(result['message'] ?? 'Detection failed');
+          setState(() {
+            _detectedCategory = mappedCategory;
+            _confidence = (confidence is double) ? confidence : 
+                          (confidence is int) ? confidence.toDouble() : 
+                          double.tryParse(confidence.toString()) ?? 0.5;
+          });
+          return; // Success, exit function
+        }
       }
+      
+      // If we reach here, detection failed
+      final errorMsg = result['message'] ?? 'Detection failed - no prediction received';
+      print('ERROR: $errorMsg');
+      print('ERROR: Raw result keys: ${result.keys.toList()}');
+      
+      // Show error to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deteksi gagal: $errorMsg'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+      
+      throw Exception(errorMsg);
     } catch (e) {
       print('EXCEPTION in _detectCategory: $e');
       // Fallback
