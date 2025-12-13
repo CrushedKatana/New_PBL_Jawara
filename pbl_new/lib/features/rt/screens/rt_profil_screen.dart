@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pbl_new/core/services/auth_service.dart';
+import 'package:pbl_new/core/services/profile_service.dart';
 
 class RtProfilScreen extends StatefulWidget {
   const RtProfilScreen({super.key});
@@ -9,16 +10,84 @@ class RtProfilScreen extends StatefulWidget {
 }
 
 class _RtProfilScreenState extends State<RtProfilScreen> {
+  Map<String, dynamic>? _profileData;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
+  }
+
+  Future<void> _loadProfileData() async {
+    final currentUser = AuthService.currentUser;
+    if (currentUser == null) return;
+
+    setState(() => _isLoading = true);
+
+    final result = await ProfileService.getUserProfile(int.parse(currentUser.id));
+
+    if (mounted) {
+      setState(() {
+        _profileData = result;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Logout'),
+        content: const Text('Apakah Anda yakin ingin keluar?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await AuthService.logout();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = AuthService.currentUser;
+
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF2D3FE3),
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+
+    final userData = _profileData?['user'];
 
     return Scaffold(
       backgroundColor: const Color(0xFF2D3FE3),
       body: SafeArea(
         child: currentUser == null
             ? const Center(child: Text('Silakan login', style: TextStyle(color: Colors.white)))
-            : SingleChildScrollView(
+            : RefreshIndicator(
+                onRefresh: _loadProfileData,
+                child: SingleChildScrollView(
                 child: Column(
                   children: [
                     // Header
@@ -83,16 +152,16 @@ class _RtProfilScreenState extends State<RtProfilScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        currentUser.name,
+                                        userData?['name'] ?? currentUser.name,
                                         style: const TextStyle(
                                           fontSize: 20,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      const Text(
-                                        'Ketua RT 05',
-                                        style: TextStyle(
+                                      Text(
+                                        'Ketua RT ${userData?['rt_number'] ?? ''}',
+                                        style: const TextStyle(
                                           fontSize: 14,
                                           color: Colors.grey,
                                         ),
@@ -160,12 +229,7 @@ class _RtProfilScreenState extends State<RtProfilScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: OutlinedButton.icon(
-                              onPressed: () async {
-                                await AuthService.logout();
-                                if (context.mounted) {
-                                  Navigator.pushReplacementNamed(context, '/login');
-                                }
-                              },
+                              onPressed: _handleLogout,
                               icon: const Icon(Icons.logout, color: Colors.red),
                               label: const Text(
                                 'Keluar',
@@ -207,6 +271,7 @@ class _RtProfilScreenState extends State<RtProfilScreen> {
                   ],
                 ),
               ),
+            ),
       ),
     );
   }

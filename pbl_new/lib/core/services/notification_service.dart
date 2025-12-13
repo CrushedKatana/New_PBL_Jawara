@@ -1,149 +1,164 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:http/http.dart' as http;
+
+import '../../config/api_config.dart';
 import '../models/notification_model.dart';
+import 'auth_service.dart';
 
 /// Service untuk mengelola notifikasi
 class NotificationService {
-  // Simple in-memory cache agar operasi tandai semua berpengaruh pada fetch berikutnya.
-  static List<NotificationModel>? _cache;
-
-  Future<List<NotificationModel>> _ensureCache() async {
-    if (_cache == null) {
-      await Future.delayed(const Duration(milliseconds: 150));
-      _cache = _getDummyNotifications();
-    }
-    return _cache!;
-  }
+  static String get _endpoint => '${ApiConfig.baseUrl}/notifications.php';
 
   /// Fetch semua notifikasi
   Future<List<NotificationModel>> fetchAllNotifications() async {
-    // TODO: Ganti dengan HTTP GET actual.
-    final list = await _ensureCache();
-    // Return salinan agar UI tidak memodifikasi langsung.
-    return List<NotificationModel>.from(list);
+    final currentUser = AuthService.currentUser;
+    if (currentUser == null) return [];
+
+    try {
+      final response = await http.get(
+        Uri.parse('$_endpoint?user_id=${currentUser.id}'),
+      ).timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List notifications = data['notifications'] ?? [];
+          return notifications.map((n) => NotificationModel.fromJson(n)).toList();
+        }
+      }
+    } catch (e) {
+      print('Error fetching notifications: $e');
+    }
+    return [];
   }
 
   /// Fetch notifikasi berdasarkan filter (Semua, Pesanan, Pesan)
   Future<List<NotificationModel>> fetchNotificationsByFilter(String filter) async {
-    final all = await fetchAllNotifications();
-    switch (filter.toLowerCase()) {
-      case 'pesanan':
-        return all.where((n) => n.type == NotificationType.order || n.type == NotificationType.payment).toList();
-      case 'pesan':
-        return all.where((n) => n.type == NotificationType.message || n.type == NotificationType.unread).toList();
-      default:
-        return all;
+    final currentUser = AuthService.currentUser;
+    if (currentUser == null) return [];
+
+    try {
+      final response = await http.get(
+        Uri.parse('$_endpoint?user_id=${currentUser.id}&filter=$filter'),
+      ).timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List notifications = data['notifications'] ?? [];
+          return notifications.map((n) => NotificationModel.fromJson(n)).toList();
+        }
+      }
+    } catch (e) {
+      print('Error fetching filtered notifications: $e');
     }
+    return [];
   }
 
   /// Tandai notifikasi sebagai sudah dibaca
   Future<bool> markAsRead(String notificationId) async {
-    final list = await _ensureCache();
-    _cache = list.map((n) {
-      if (n.id == notificationId) {
-        return NotificationModel(
-          id: n.id,
-          title: n.title,
-          message: n.message,
-          type: n.type,
-          timeAgo: n.timeAgo,
-          isRead: true,
-          orderId: n.orderId,
-          senderId: n.senderId,
-        );
+    final currentUser = AuthService.currentUser;
+    if (currentUser == null) return false;
+
+    try {
+      final response = await http.put(
+        Uri.parse(_endpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'id': notificationId,
+          'user_id': currentUser.id,
+        }),
+      ).timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
       }
-      return n;
-    }).toList();
-    // TODO: Kirim ke backend.
-    return true;
+    } catch (e) {
+      print('Error marking notification as read: $e');
+    }
+    return false;
   }
 
   /// Tandai semua notifikasi sebagai sudah dibaca
   Future<bool> markAllAsRead() async {
-    final list = await _ensureCache();
-    _cache = list.map((n) => NotificationModel(
-          id: n.id,
-          title: n.title,
-          message: n.message,
-          type: n.type,
-          timeAgo: n.timeAgo,
-          isRead: true,
-          orderId: n.orderId,
-          senderId: n.senderId,
-        ))
-        .toList();
-    // TODO: Kirim ke backend.
-    return true;
+    final currentUser = AuthService.currentUser;
+    if (currentUser == null) return false;
+
+    try {
+      final response = await http.put(
+        Uri.parse(_endpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_id': currentUser.id,
+          'mark_all': true,
+        }),
+      ).timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      }
+    } catch (e) {
+      print('Error marking all as read: $e');
+    }
+    return false;
   }
 
   /// Hitung jumlah notifikasi yang belum dibaca
   Future<int> getUnreadCount() async {
-    final list = await fetchAllNotifications();
-    return list.where((n) => !n.isRead).length;
+    final currentUser = AuthService.currentUser;
+    if (currentUser == null) return 0;
+
+    try {
+      final response = await http.get(
+        Uri.parse('$_endpoint?action=count&user_id=${currentUser.id}'),
+      ).timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          return data['count'] ?? 0;
+        }
+      }
+    } catch (e) {
+      print('Error getting unread count: $e');
+    }
+    return 0;
   }
 
-  /// Data dummy untuk development
-  List<NotificationModel> _getDummyNotifications() {
-    return [
-      NotificationModel(
-        id: '1',
-        title: 'Pesanan Dikirim',
-        message: 'Pesanan #ORD-12345 sedang dalam perjalanan ke alamat Anda',
-        type: NotificationType.order,
-        timeAgo: '5 menit lalu',
-        isRead: false,
-        orderId: 'ORD-12345',
-      ),
-      NotificationModel(
-        id: '2',
-        title: 'Pesan Baru dari Penjual',
-        message: 'Budi Santoso: \'Barang sudah dikirim hari ini\'',
-        type: NotificationType.message,
-        timeAgo: '15 menit lalu',
-        isRead: false,
-        senderId: 'user123',
-      ),
-      NotificationModel(
-        id: '3',
-        title: 'Pembayaran Berhasil',
-        message: 'Pembayaran untuk pesanan #ORD-12345 telah dikonfirmasi',
-        type: NotificationType.payment,
-        timeAgo: '1 jam lalu',
-        isRead: true,
-        orderId: 'ORD-12345',
-      ),
-      NotificationModel(
-        id: '4',
-        title: 'Verifikasi RT/RW Disetujui',
-        message: 'Status verifikasi Anda telah disetujui oleh RT 05/RW 03',
-        type: NotificationType.verification,
-        timeAgo: '2 jam lalu',
-        isRead: true,
-      ),
-      NotificationModel(
-        id: '5',
-        title: 'Update Aplikasi',
-        message: 'Versi baru Jawara tersedia. Update sekarang untuk fitur terbaru',
-        type: NotificationType.update,
-        timeAgo: '3 jam lalu',
-        isRead: true,
-      ),
-      NotificationModel(
-        id: '6',
-        title: 'Produk Anda Dilihat 25x',
-        message: 'Kaos Batik mendapat 25 views minggu ini!',
-        type: NotificationType.views,
-        timeAgo: '5 jam lalu',
-        isRead: true,
-      ),
-      NotificationModel(
-        id: '7',
-        title: '3 Pesan Belum Dibaca',
-        message: 'Anda memiliki pesan yang belum dibaca dari pembeli',
-        type: NotificationType.unread,
-        timeAgo: '1 hari lalu',
-        isRead: true,
-      ),
-    ];
+  /// Create a new notification (for testing or admin)
+  Future<bool> createNotification({
+    required String userId,
+    required String title,
+    required String message,
+    String type = 'general',
+    String? relatedId,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse(_endpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_id': userId,
+          'title': title,
+          'message': message,
+          'type': type,
+          'related_id': relatedId,
+          'data': data,
+        }),
+      ).timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return responseData['success'] == true;
+      }
+    } catch (e) {
+      print('Error creating notification: $e');
+    }
+    return false;
   }
 }
