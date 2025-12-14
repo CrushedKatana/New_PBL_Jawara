@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pbl_new/core/services/auth_service.dart';
 import 'package:pbl_new/core/services/profile_service.dart';
+import 'package:pbl_new/features/settings/settings_home_page.dart';
 
 class ProfilScreen extends StatefulWidget {
   const ProfilScreen({super.key});
@@ -26,18 +27,31 @@ class _ProfilScreenState extends State<ProfilScreen> {
 
     setState(() => _isLoading = true);
 
-    // Load profile and stats in parallel
-    final results = await Future.wait([
-      ProfileService.getUserProfile(int.parse(currentUser.id)),
-      ProfileService.getUserStats(int.parse(currentUser.id)),
-    ]);
+    try {
+      // Load profile and stats in parallel with timeout
+      final results = await Future.wait([
+        ProfileService.getUserProfile(int.parse(currentUser.id)),
+        ProfileService.getUserStats(int.parse(currentUser.id)),
+      ]).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => [
+          {'success': false, 'message': 'Timeout'},
+          {'success': false, 'message': 'Timeout'}
+        ],
+      );
 
-    if (mounted) {
-      setState(() {
-        _profileData = results[0];
-        _statsData = results[1];
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _profileData = results[0];
+          _statsData = results[1];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading profile: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -312,7 +326,14 @@ class _ProfilScreenState extends State<ProfilScreen> {
                             ),
                             title: const Text('Pengaturan Akun'),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () {},
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SettingsHomePage(),
+                                ),
+                              );
+                            },
                           ),
 
                           ListTile(

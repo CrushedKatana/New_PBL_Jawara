@@ -33,10 +33,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
+        bottom: false, // Don't add padding at bottom
         child: Column(
           children: [
             Expanded(
               child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 100), // Add padding for bottom action bar
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

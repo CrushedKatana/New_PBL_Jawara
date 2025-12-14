@@ -190,9 +190,27 @@ class _BerandaScreenState extends State<BerandaScreen> {
                             itemBuilder: (context, index) {
                               final category = categories[index];
                               final isSelected = selectedCategory == category.id;
-                              final displayIcon = (category.icon != null && category.icon!.isNotEmpty)
-                                  ? category.icon!
-                                  : (category.name.isNotEmpty ? category.name[0].toUpperCase() : '•');
+                              // Map category names to icons
+                              final iconMap = {
+                                'kemeja': '👔',
+                                'sepatu': '👞', 
+                                't-shirt': '👕',
+                                'topi': '🧢',
+                                'celana': '👖',
+                                'dress': '👗',
+                                'jaket': '🧥',
+                                'sports baju': '🎽',
+                                'checkrook t-shirt': '✅',
+                                'sports sepatu': '👟',
+                                'person': '👤',
+                              };
+                              // Use icon from DB if exists, otherwise map by name
+                              String displayIcon = '👕'; // default
+                              if (category.icon != null && category.icon!.isNotEmpty) {
+                                displayIcon = category.icon!;
+                              } else {
+                                displayIcon = iconMap[category.name.toLowerCase()] ?? '👕';
+                              }
                               return GestureDetector(
                                 onTap: () {
                                   setState(() {

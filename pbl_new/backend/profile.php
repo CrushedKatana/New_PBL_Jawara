@@ -17,6 +17,10 @@ switch ($action) {
         getUserStats($conn);
         break;
     
+    case 'change_password':
+        changePassword($conn);
+        break;
+    
     default:
         sendJsonResponse(['error' => 'Invalid action'], 400);
 }
@@ -162,5 +166,55 @@ function getUserStats($conn) {
             'avg_rating' => (float)$avgRating
         ]
     ]);
+}
+
+/**
+ * Change user password
+ */
+function changePassword($conn) {
+    $userId = $_POST['user_id'] ?? null;
+    $currentPassword = $_POST['current_password'] ?? null;
+    $newPassword = $_POST['new_password'] ?? null;
+    
+    if (!$userId || !$currentPassword || !$newPassword) {
+        sendJsonResponse(['success' => false, 'message' => 'Missing required fields'], 400);
+        return;
+    }
+    
+    $userId = $conn->real_escape_string($userId);
+    
+    // Verify current password
+    $sql = "SELECT password FROM users WHERE id = '$userId'";
+    $result = $conn->query($sql);
+    
+    if ($result->num_rows === 0) {
+        sendJsonResponse(['success' => false, 'message' => 'User not found'], 404);
+        return;
+    }
+    
+    $user = $result->fetch_assoc();
+    
+    if (!password_verify($currentPassword, $user['password'])) {
+        sendJsonResponse(['success' => false, 'message' => 'Password saat ini salah'], 401);
+        return;
+    }
+    
+    // Hash new password
+    $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+    
+    // Update password
+    $updateSql = "UPDATE users SET password = '$hashedPassword', updated_at = NOW() WHERE id = '$userId'";
+    
+    if ($conn->query($updateSql)) {
+        sendJsonResponse([
+            'success' => true,
+            'message' => 'Password berhasil diubah'
+        ]);
+    } else {
+        sendJsonResponse([
+            'success' => false,
+            'message' => 'Gagal mengubah password: ' . $conn->error
+        ], 500);
+    }
 }
 ?>

@@ -98,4 +98,37 @@ class ProfileService {
       };
     }
   }
+
+  /// Change password
+  static Future<Map<String, dynamic>> changePassword({
+    required int userId,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse(_endpoint),
+        body: {
+          'action': 'change_password',
+          'user_id': userId.toString(),
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to change password'
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error: $e'
+      };
+    }
+  }
 }

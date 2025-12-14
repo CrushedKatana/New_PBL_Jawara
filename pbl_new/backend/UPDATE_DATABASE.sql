@@ -15,15 +15,15 @@ ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'warga' AFTER email;
 UPDATE users SET role = 'warga' WHERE role IS NULL OR role = '';
 
 -- 3. Buat table notifications kalau belum ada
+-- TANPA foreign key karena users.id kemungkinan VARCHAR bukan INT
 CREATE TABLE IF NOT EXISTS notifications (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT NOT NULL,
+    user_id VARCHAR(50) NOT NULL,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
     type ENUM('pesanan', 'pesan', 'umum') DEFAULT 'umum',
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_user_id (user_id),
     INDEX idx_is_read (is_read),
     INDEX idx_type (type)

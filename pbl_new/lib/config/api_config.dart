@@ -11,7 +11,7 @@ class ApiConfig {
   static final String baseUrl = _resolveBaseUrl();
 
   // Network IP PC untuk akses dari device lain (update sesuai IP PC)
-  static const String networkIp = '192.168.1.7';
+  static const String networkIp = '192.168.1.2'; // UPDATED! IP berubah dari 192.168.1.7
   
   static String _resolveBaseUrl() {
     const envBase = String.fromEnvironment('API_BASE_URL');

@@ -3,6 +3,8 @@ import 'package:pbl_new/core/models/message_model.dart';
 import 'package:pbl_new/core/services/auth_service.dart';
 import 'package:pbl_new/core/services/chat_service.dart';
 
+import 'chat_detail_screen.dart';
+
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -199,13 +201,21 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
             onTap: () {
-              // TODO: Navigate to chat detail
-              // Navigator.push(context, MaterialPageRoute(
-              //   builder: (context) => ChatDetailScreen(
-              //     conversationWith: otherUserId,
-              //     otherUser: {'id': otherUserId, 'name': otherUserName},
-              //   ),
-              // ));
+              // Navigate to chat detail
+              final otherUserId = isCurrentUserSender ? msg.receiverId : msg.senderId;
+              final otherName = isCurrentUserSender ? msg.receiverName : msg.senderName;
+              
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatDetailScreen(
+                    chatId: msg.id,
+                    otherUserId: otherUserId,
+                    otherUserName: otherName ?? 'User',
+                    otherUserVerified: false,
+                  ),
+                ),
+              );
             },
           ),
         );

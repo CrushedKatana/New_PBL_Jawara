@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:pbl_new/core/services/auth_service.dart';
+import 'package:pbl_new/core/services/profile_service.dart';
 
 class SecurityPage extends StatefulWidget {
   const SecurityPage({super.key});
@@ -13,6 +15,7 @@ class _SecurityPageState extends State<SecurityPage> {
   final _confirmController = TextEditingController();
   bool _sms2fa = false;
   bool _app2fa = true;
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -32,13 +35,14 @@ class _SecurityPageState extends State<SecurityPage> {
           _PasswordField(label: 'Konfirmasi Password Baru', controller: _confirmController),
           const SizedBox(height: 16),
           FilledButton(
-            onPressed: () {
-              // TODO: Integrate with backend change password API.
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Password diperbarui (dummy)')),
-              );
-            },
-            child: const Text('Ubah Password'),
+            onPressed: _isLoading ? null : _handleChangePassword,
+            child: _isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Ubah Password'),
           ),
           const SizedBox(height: 24),
           const Text('AUTENTIKASI DUA FAKTOR', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -76,6 +80,84 @@ class _SecurityPageState extends State<SecurityPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _handleChangePassword() async {
+    final currentUser = AuthService.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Silakan login terlebih dahulu')),
+      );
+      return;
+    }
+
+    // Validation
+    if (_currentController.text.isEmpty ||
+        _newController.text.isEmpty ||
+        _confirmController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Semua field harus diisi')),
+      );
+      return;
+    }
+
+    if (_newController.text.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password baru minimal 8 karakter')),
+      );
+      return;
+    }
+
+    if (_newController.text != _confirmController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Konfirmasi password tidak cocok')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await ProfileService.changePassword(
+        userId: int.parse(currentUser.id),
+        currentPassword: _currentController.text,
+        newPassword: _newController.text,
+      );
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+
+        if (result['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Password berhasil diubah'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Clear fields
+          _currentController.clear();
+          _newController.clear();
+          _confirmController.clear();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Gagal mengubah password'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
 
