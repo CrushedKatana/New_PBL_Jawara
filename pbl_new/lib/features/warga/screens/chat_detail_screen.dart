@@ -54,6 +54,29 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+  String _formatMessageTime(DateTime? dateTime) {
+    if (dateTime == null) return 'Baru saja';
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+    final timeFormat = DateFormat('HH:mm');
+
+    if (messageDate == today) {
+      return 'Today ${timeFormat.format(dateTime)}';
+    } else if (messageDate == yesterday) {
+      return 'Yesterday ${timeFormat.format(dateTime)}';
+    } else if (now.difference(dateTime).inDays < 7) {
+      // Show day name for this week
+      return DateFormat('EEEE HH:mm').format(dateTime);
+    } else {
+      // Show full date for older messages
+      return DateFormat('dd/MM/yyyy HH:mm').format(dateTime);
+    }
+  }
+
   @override
   void dispose() {
     _messageController.dispose();
@@ -135,15 +158,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         );
                       }
 
+                      // Sort messages by date ascending (oldest first, newest at bottom)
                       final messages = snapshot.data!;
+                      messages.sort((a, b) {
+                        if (a.createdAt == null) return -1;
+                        if (b.createdAt == null) return 1;
+                        return a.createdAt!.compareTo(b.createdAt!);
+                      });
+
                       return ListView.builder(
-                        reverse: true,
                         padding: const EdgeInsets.all(16),
                         itemCount: messages.length,
                         itemBuilder: (context, index) {
                           final message = messages[index];
                           final isMe = message.senderId == currentUser.id;
-                          final timeFormat = DateFormat('HH:mm');
 
                           return Align(
                             alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -174,7 +202,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    timeFormat.format(message.createdAt ?? DateTime.now()),
+                                    _formatMessageTime(message.createdAt),
                                     style: TextStyle(
                                       color: isMe ? Colors.white70 : Colors.grey,
                                       fontSize: 10,
