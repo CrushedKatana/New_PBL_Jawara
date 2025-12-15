@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/admin_service.dart';
+
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -8,24 +10,13 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  final Map<String, dynamic> _stats = {
-    'totalWarga': 702,
-    'totalProduk': 349,
-    'totalTransaksi': 1400,
-    'gmv': 52.4,
-    'wargaGrowth': '+12',
-    'produkGrowth': '+23',
-    'transaksiGrowth': '+15%',
-    'gmvGrowth': '+8%',
-  };
+  Map<String, dynamic>? _stats;
+  bool _loadingStats = true;
+  String? _statsError;
 
-  final List<Map<String, dynamic>> _rtPerformance = [
-    {'rt': 'RT 01', 'warga': 156, 'produk': 89, 'transaksi': 342},
-    {'rt': 'RT 02', 'warga': 134, 'produk': 67, 'transaksi': 278},
-    {'rt': 'RT 03', 'warga': 142, 'produk': 72, 'transaksi': 301},
-    {'rt': 'RT 04', 'warga': 128, 'produk': 54, 'transaksi': 245},
-    {'rt': 'RT 05', 'warga': 142, 'produk': 67, 'transaksi': 234},
-  ];
+  final List<Map<String, dynamic>> _rtPerformance = [];
+  bool _loadingRt = true;
+  String? _rtError;
 
   final List<Map<String, dynamic>> _systemStatus = [
     {'name': 'PCVK Model', 'status': 'Active', 'color': Colors.green},
@@ -34,7 +25,95 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadStats();
+    _loadRtPerformance();
+    _loadSystemStatus();
+  }
+
+  Future<void> _loadStats() async {
+    setState(() {
+      _loadingStats = true;
+      _statsError = null;
+    });
+    try {
+      final data = await AdminService.getGlobalStats();
+      if (!mounted) return;
+      setState(() {
+        _stats = {
+          'totalWarga': data['totalWarga'] ?? 0,
+          'totalProduk': data['totalProduk'] ?? 0,
+          'totalTransaksi': data['totalTransaksi'] ?? 0,
+          'gmv': data['gmv'] ?? 0.0,
+          // Growth placeholders until backend provides deltas
+          'wargaGrowth': '+',
+          'produkGrowth': '+',
+          'transaksiGrowth': '+',
+          'gmvGrowth': '+',
+        };
+        _loadingStats = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _statsError = 'Gagal memuat statistik';
+        _loadingStats = false;
+      });
+    }
+  }
+
+  Future<void> _loadRtPerformance() async {
+    setState(() {
+      _loadingRt = true;
+      _rtError = null;
+    });
+    final data = await AdminService.getRtPerformance();
+    if (!mounted) return;
+    setState(() {
+      _rtPerformance.clear();
+      _rtPerformance.addAll(data);
+      _loadingRt = false;
+      if (_rtPerformance.isEmpty) {
+        _rtError = 'Tidak ada data RT';
+      }
+    });
+  }
+
+  Future<void> _loadSystemStatus() async {
+    final data = await AdminService.getSystemStatus();
+    if (!mounted) return;
+    setState(() {
+      _systemStatus.clear();
+      for (final s in data) {
+        final status = s['status']?.toString() ?? 'Unknown';
+        Color color;
+        switch (status.toLowerCase()) {
+          case 'active':
+          case 'healthy':
+          case 'running':
+            color = Colors.green;
+            break;
+          case 'degraded':
+            color = Colors.orange;
+            break;
+          case 'down':
+          default:
+            color = Colors.red;
+        }
+        _systemStatus.add({
+          'name': s['name'] ?? 'Service',
+          'status': status,
+          'color': color,
+        });
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final hasStats = !_loadingStats && _statsError == null && _stats != null;
+
     return Scaffold(
       backgroundColor: const Color(0xFF2D3FE3),
       body: SafeArea(
@@ -98,7 +177,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Stats Grid
                       GridView.count(
                         shrinkWrap: true,
@@ -108,34 +187,54 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         crossAxisSpacing: 16,
                         childAspectRatio: 1.3,
                         children: [
-                          _buildStatCard(
-                            icon: Icons.group,
-                            title: 'Total Warga',
-                            value: _stats['totalWarga'].toString(),
-                            growth: _stats['wargaGrowth'].toString(),
-                            color: const Color(0xFF2D3FE3),
-                          ),
-                          _buildStatCard(
-                            icon: Icons.shopping_bag,
-                            title: 'Total Produk',
-                            value: _stats['totalProduk'].toString(),
-                            growth: _stats['produkGrowth'].toString(),
-                            color: const Color(0xFF2D3FE3),
-                          ),
-                          _buildStatCard(
-                            icon: Icons.trending_up,
-                            title: 'Transaksi',
-                            value: _stats['totalTransaksi'].toString(),
-                            growth: _stats['transaksiGrowth'].toString(),
-                            color: const Color(0xFF2D3FE3),
-                          ),
-                          _buildStatCard(
-                            icon: Icons.attach_money,
-                            title: 'GMV Bulan Ini',
-                            value: '${_stats['gmv']}M',
-                            growth: _stats['gmvGrowth'].toString(),
-                            color: const Color(0xFF2D3FE3),
-                          ),
+                          if (_loadingStats)
+                            ...List.generate(4, (i) => _buildStatCard(
+                                  icon: Icons.hourglass_empty,
+                                  title: 'Memuat...',
+                                  value: '-',
+                                  growth: '-',
+                                  color: const Color(0xFF2D3FE3),
+                                ))
+                          else if (_statsError != null || _stats == null)
+                            ...[
+                              _buildStatCard(
+                                icon: Icons.error,
+                                title: 'Error',
+                                value: '—',
+                                growth: '—',
+                                color: Colors.red,
+                              ),
+                            ]
+                          else ...[
+                            _buildStatCard(
+                              icon: Icons.group,
+                              title: 'Total Warga',
+                              value: (_stats!['totalWarga']).toString(),
+                              growth: _stats!['wargaGrowth'].toString(),
+                              color: const Color(0xFF2D3FE3),
+                            ),
+                            _buildStatCard(
+                              icon: Icons.shopping_bag,
+                              title: 'Total Produk',
+                              value: (_stats!['totalProduk']).toString(),
+                              growth: _stats!['produkGrowth'].toString(),
+                              color: const Color(0xFF2D3FE3),
+                            ),
+                            _buildStatCard(
+                              icon: Icons.trending_up,
+                              title: 'Transaksi',
+                              value: (_stats!['totalTransaksi']).toString(),
+                              growth: _stats!['transaksiGrowth'].toString(),
+                              color: const Color(0xFF2D3FE3),
+                            ),
+                            _buildStatCard(
+                              icon: Icons.attach_money,
+                              title: 'GMV Bulan Ini',
+                              value: '${_stats!['gmv']}M',
+                              growth: _stats!['gmvGrowth'].toString(),
+                              color: const Color(0xFF2D3FE3),
+                            ),
+                          ],
                         ],
                       ),
 
@@ -162,7 +261,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           _buildManagementCard(
                             icon: Icons.group,
                             title: 'Kelola User',
-                            subtitle: '702 akun',
+                            subtitle: hasStats
+                                ? '${_stats!['totalWarga']} akun'
+                                : 'Memuat...',
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -175,8 +276,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           _buildManagementCard(
                             icon: Icons.assessment,
                             title: 'RT/RW',
-                            subtitle: '5 RT aktif',
-                            badge: const SizedBox.shrink(),
+                            subtitle: _rtPerformance.isNotEmpty
+                                ? '${_rtPerformance.length} RT aktif'
+                                : 'Memuat...',
+                            badge: _rtPerformance.isNotEmpty
+                                ? const SizedBox.shrink()
+                                : null,
                           ),
                           _buildManagementCard(
                             icon: Icons.show_chart,
@@ -224,39 +329,65 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           color: Colors.grey[50],
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Table(
-                          columnWidths: const {
-                            0: FlexColumnWidth(2),
-                            1: FlexColumnWidth(1.5),
-                            2: FlexColumnWidth(1.5),
-                            3: FlexColumnWidth(1.5),
-                          },
-                          children: [
-                            TableRow(
-                              decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(16),
-                                  topRight: Radius.circular(16),
+                        child: _loadingRt
+                            ? Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    _buildTableHeader('Memuat...'),
+                                    const SizedBox(height: 8),
+                                    ...List.generate(3, (i) => Row(
+                                          children: [
+                                            Expanded(child: Container(height: 24, color: Colors.grey[200])),
+                                            const SizedBox(width: 8),
+                                            Expanded(child: Container(height: 24, color: Colors.grey[200])),
+                                            const SizedBox(width: 8),
+                                            Expanded(child: Container(height: 24, color: Colors.grey[200])),
+                                            const SizedBox(width: 8),
+                                            Expanded(child: Container(height: 24, color: Colors.grey[200])),
+                                          ],
+                                        )),
+                                  ],
                                 ),
-                              ),
-                              children: [
-                                _buildTableHeader('RT'),
-                                _buildTableHeader('Warga'),
-                                _buildTableHeader('Produk'),
-                                _buildTableHeader('Transaksi'),
-                              ],
-                            ),
-                            ..._rtPerformance.map((rt) => TableRow(
-                              children: [
-                                _buildTableCell(rt['rt'].toString()),
-                                _buildTableCell(rt['warga'].toString()),
-                                _buildTableCell(rt['produk'].toString()),
-                                _buildTableCell(rt['transaksi'].toString()),
-                              ],
-                            )),
-                          ],
-                        ),
+                              )
+                            : _rtError != null
+                                ? Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Text(_rtError!),
+                                  )
+                                : Table(
+                                    columnWidths: const {
+                                      0: FlexColumnWidth(2),
+                                      1: FlexColumnWidth(1.5),
+                                      2: FlexColumnWidth(1.5),
+                                      3: FlexColumnWidth(1.5),
+                                    },
+                                    children: [
+                                      TableRow(
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[100],
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(16),
+                                            topRight: Radius.circular(16),
+                                          ),
+                                        ),
+                                        children: [
+                                          _buildTableHeader('RT'),
+                                          _buildTableHeader('Warga'),
+                                          _buildTableHeader('Produk'),
+                                          _buildTableHeader('Transaksi'),
+                                        ],
+                                      ),
+                                      ..._rtPerformance.map((rt) => TableRow(
+                                            children: [
+                                              _buildTableCell(rt['rt'].toString()),
+                                              _buildTableCell(rt['warga'].toString()),
+                                              _buildTableCell(rt['produk'].toString()),
+                                              _buildTableCell(rt['transaksi'].toString()),
+                                            ],
+                                          )),
+                                    ],
+                                  ),
                       ),
 
                       const SizedBox(height: 32),
@@ -272,43 +403,43 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const SizedBox(height: 16),
 
                       ..._systemStatus.map((status) => Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              status['name'].toString(),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: (status['color'] as Color).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                status['status'].toString(),
-                                style: TextStyle(
-                                  color: status['color'] as Color,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  status['name'].toString(),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: (status['color'] as Color).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    status['status'].toString(),
+                                    style: TextStyle(
+                                      color: status['color'] as Color,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      )),
+                          )),
 
                       const SizedBox(height: 32),
 
@@ -558,64 +689,30 @@ class UserManagementScreen extends StatefulWidget {
 }
 
 class _UserManagementScreenState extends State<UserManagementScreen> {
-  final _users = [
-    {
-      'name': 'Ibu Siti Aminah',
-      'role': 'Warga',
-      'rt': 'RT 05',
-      'status': 'Active',
-      'joined': 'Joined Jan 2024',
-      'avatar': 'I',
-    },
-    {
-      'name': 'Pak Budi RT 05',
-      'role': 'RT Officer',
-      'rt': 'RT 05',
-      'status': 'Active',
-      'joined': 'Joined Des 2023',
-      'avatar': null,
-    },
-    {
-      'name': 'Admin Kelurahan',
-      'role': 'Admin',
-      'rt': '',
-      'status': 'Active',
-      'joined': 'Joined Nov 2023',
-      'avatar': null,
-    },
-    {
-      'name': 'Dimas Pratama',
-      'role': 'Warga',
-      'rt': 'RT 02',
-      'status': 'Active',
-      'joined': 'Joined Feb 2024',
-      'avatar': 'D',
-    },
-    {
-      'name': 'Sari Wulandari',
-      'role': 'Warga',
-      'rt': 'RT 03',
-      'status': 'Active',
-      'joined': 'Joined Mar 2024',
-      'avatar': 'S',
-    },
-    {
-      'name': 'Pak Ahmad RT 01',
-      'role': 'RT Officer',
-      'rt': 'RT 01',
-      'status': 'Active',
-      'joined': 'Joined Des 2023',
-      'avatar': null,
-    },
-    {
-      'name': 'Toko Sepatu Jaya',
-      'role': 'Warga',
-      'rt': 'RT 01',
-      'status': 'Suspended',
-      'joined': 'Joined Jan 2024',
-      'avatar': 'T',
-    },
-  ];
+  List<Map<String, dynamic>> _users = [];
+  bool _loadingUsers = true;
+  String? _usersError;
+  String _roleFilter = 'all'; // all|warga|rt|rw|admin
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  Future<void> _loadUsers() async {
+    setState(() {
+      _loadingUsers = true;
+      _usersError = null;
+    });
+    final roleParam = _roleFilter == 'all' ? null : _roleFilter;
+    final result = await AdminService.getUsers(role: roleParam);
+    if (!mounted) return;
+    setState(() {
+      _users = result;
+      _loadingUsers = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -667,16 +764,44 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             ),
           ),
 
+          // Role Filters
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                _buildFilterChip('Semua', 'all'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Warga', 'warga'),
+                const SizedBox(width: 8),
+                _buildFilterChip('RT/RW', 'rt'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Admin', 'admin'),
+              ],
+            ),
+          ),
+
           // Stats
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildUserStat('702', 'Total'),
-                _buildUserStat('685', 'Warga'),
-                _buildUserStat('15', 'RT/RW'),
-                _buildUserStat('2', 'Admin'),
+                _buildUserStat(_users.length.toString(), 'Total'),
+                _buildUserStat(
+                  _users.where((u) => (u['role']?.toString().toLowerCase() ?? '') == 'warga').length.toString(),
+                  'Warga',
+                ),
+                _buildUserStat(
+                  _users.where((u) {
+                    final r = (u['role']?.toString().toLowerCase() ?? '');
+                    return r == 'rt' || r == 'rw' || r.contains('rt officer');
+                  }).length.toString(),
+                  'RT/RW',
+                ),
+                _buildUserStat(
+                  _users.where((u) => (u['role']?.toString().toLowerCase() ?? '') == 'admin').length.toString(),
+                  'Admin',
+                ),
               ],
             ),
           ),
@@ -687,8 +812,42 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _users.length,
+              itemCount: _loadingUsers ? 6 : _users.length,
               itemBuilder: (context, index) {
+                if (_loadingUsers) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(height: 16, color: Colors.grey[200]),
+                              const SizedBox(height: 8),
+                              Container(height: 14, color: Colors.grey[200]),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
                 final user = _users[index];
                 return _buildUserCard(user);
               },
@@ -696,6 +855,20 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value) {
+    final selected = _roleFilter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) {
+        setState(() {
+          _roleFilter = value;
+        });
+        _loadUsers();
+      },
     );
   }
 
@@ -721,9 +894,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   Widget _buildUserCard(Map<String, dynamic> user) {
-    final isRTOfficer = user['role'] == 'RT Officer';
-    final isAdmin = user['role'] == 'Admin';
-    final isSuspended = user['status'] == 'Suspended';
+    final roleRaw = (user['role'] ?? user['user_role'] ?? '').toString();
+    final role = roleRaw.isEmpty ? 'warga' : roleRaw;
+    final isRTOfficer = role.toLowerCase().contains('rt');
+    final isAdmin = role.toLowerCase() == 'admin';
+    final statusRaw = (user['status'] ?? user['is_active'] ?? 'Active').toString();
+    final isSuspended = statusRaw.toLowerCase() == 'suspended' || statusRaw == '0';
+    final name = (user['name'] ?? user['full_name'] ?? user['username'] ?? 'Tanpa Nama').toString();
+    final rt = (user['rt'] ?? user['rt_id'] ?? '').toString();
+    final joined = (user['joined'] ?? user['created_at'] ?? '').toString();
+    final avatar = user['avatar']?.toString();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -774,7 +954,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user['name'],
+                  name,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -823,16 +1003,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       )
                     else
                       Text(
-                        user['role'],
+                        role,
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
                         ),
                       ),
-                    if (user['rt'].toString().isNotEmpty) ...[
+                    if (rt.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       Text(
-                        user['rt'],
+                        rt,
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
@@ -856,7 +1036,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        user['status'],
+                        isSuspended ? 'Suspended' : 'Active',
                         style: TextStyle(
                           color: isSuspended ? Colors.red : Colors.green,
                           fontSize: 11,
@@ -866,7 +1046,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      user['joined'],
+                      joined.isEmpty ? '-' : joined,
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.grey[500],
@@ -879,11 +1059,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ),
 
           // Menu
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {
-              // Show menu
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              // Placeholder for actions: view, suspend, promote, etc.
             },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'view', child: Text('Lihat Detail')),
+              PopupMenuItem(
+                value: isSuspended ? 'activate' : 'suspend',
+                child: Text(isSuspended ? 'Aktifkan' : 'Suspend'),
+              ),
+            ],
           ),
         ],
       ),

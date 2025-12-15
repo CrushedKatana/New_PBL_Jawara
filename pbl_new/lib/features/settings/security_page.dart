@@ -119,7 +119,7 @@ class _SecurityPageState extends State<SecurityPage> {
 
     try {
       final result = await ProfileService.changePassword(
-        userId: int.parse(currentUser.id),
+        userId: currentUser.id,
         currentPassword: _currentController.text,
         newPassword: _newController.text,
       );

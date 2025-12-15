@@ -30,8 +30,8 @@ class _ProfilScreenState extends State<ProfilScreen> {
     try {
       // Load profile and stats in parallel with timeout
       final results = await Future.wait([
-        ProfileService.getUserProfile(int.parse(currentUser.id)),
-        ProfileService.getUserStats(int.parse(currentUser.id)),
+        ProfileService.getUserProfile(currentUser.id),
+        ProfileService.getUserStats(currentUser.id),
       ]).timeout(
         const Duration(seconds: 10),
         onTimeout: () => [

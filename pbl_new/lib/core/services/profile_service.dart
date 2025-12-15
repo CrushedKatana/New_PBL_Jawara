@@ -8,13 +8,13 @@ class ProfileService {
   static String get _endpoint => '${ApiConfig.baseUrl}/profile.php';
 
   /// Get user profile data
-  static Future<Map<String, dynamic>> getUserProfile(int userId) async {
+  static Future<Map<String, dynamic>> getUserProfile(String userId) async {
     try {
       final response = await http.post(
         Uri.parse(_endpoint),
         body: {
           'action': 'get_profile',
-          'user_id': userId.toString(),
+          'user_id': userId,
         },
       );
 
@@ -36,7 +36,7 @@ class ProfileService {
 
   /// Update user profile
   static Future<Map<String, dynamic>> updateProfile({
-    required int userId,
+    required String userId,
     String? name,
     String? phone,
     String? address,
@@ -44,7 +44,7 @@ class ProfileService {
     try {
       final Map<String, String> body = {
         'action': 'update_profile',
-        'user_id': userId.toString(),
+        'user_id': userId,
       };
 
       if (name != null) body['name'] = name;
@@ -73,13 +73,13 @@ class ProfileService {
   }
 
   /// Get user statistics
-  static Future<Map<String, dynamic>> getUserStats(int userId) async {
+  static Future<Map<String, dynamic>> getUserStats(String userId) async {
     try {
       final response = await http.post(
         Uri.parse(_endpoint),
         body: {
           'action': 'get_stats',
-          'user_id': userId.toString(),
+          'user_id': userId,
         },
       );
 
@@ -101,7 +101,7 @@ class ProfileService {
 
   /// Change password
   static Future<Map<String, dynamic>> changePassword({
-    required int userId,
+    required String userId,
     required String currentPassword,
     required String newPassword,
   }) async {
@@ -110,7 +110,7 @@ class ProfileService {
         Uri.parse(_endpoint),
         body: {
           'action': 'change_password',
-          'user_id': userId.toString(),
+          'user_id': userId,
           'current_password': currentPassword,
           'new_password': newPassword,
         },

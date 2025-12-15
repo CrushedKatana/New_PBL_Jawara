@@ -4,8 +4,8 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pbl_new/core/models/product_model.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:pbl_new/core/services/auth_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'chat_detail_screen.dart';
 

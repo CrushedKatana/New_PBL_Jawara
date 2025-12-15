@@ -28,8 +28,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     setState(() => _isLoading = true);
 
     final results = await Future.wait([
-      ProfileService.getUserProfile(int.parse(currentUser.id)),
-      ProfileService.getUserStats(int.parse(currentUser.id)),
+      ProfileService.getUserProfile(currentUser.id),
+      ProfileService.getUserStats(currentUser.id),
     ]);
 
     if (mounted) {
