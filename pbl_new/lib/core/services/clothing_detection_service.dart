@@ -14,6 +14,7 @@ class ClothingDetectionService {
   /// 
   /// [imagePath] - Path file gambar yang akan dideteksi
   /// [userId] - ID user yang melakukan deteksi
+  /// [maxRetries] - Jumlah percobaan ulang jika gagal (default: 2)
   /// 
   /// Returns Map dengan struktur:
   /// {
@@ -25,31 +26,41 @@ class ClothingDetectionService {
   /// }
   static Future<Map<String, dynamic>> detectClothing(
     String imagePath, 
-    int userId
-  ) async {
-    try {
-      print('🔍 [ML API] Sending to: $_detectEndpoint');
-      print('📁 [ML API] Image path: $imagePath');
-      
-      // For now using multipart form (works with both mock PHP and future direct ML API)
-      var request = http.MultipartRequest('POST', Uri.parse(_detectEndpoint));
-      
-      // Add image file
-      request.files.add(
-        await http.MultipartFile.fromPath('data', imagePath)
-      );
-      
-      print('📤 [ML API] Request sent...');
-      
-      // Send request with timeout (90s for Hugging Face cold start)
-      var streamedResponse = await request.send().timeout(
-        const Duration(seconds: 90),
-        onTimeout: () {
-          throw TimeoutException('Request timeout after 90 seconds');
-        },
-      );
-      
-      var response = await http.Response.fromStream(streamedResponse);
+    int userId, {
+    int maxRetries = 2,
+  }) async {
+    int attempt = 0;
+    Map<String, dynamic>? lastError;
+
+    while (attempt <= maxRetries) {
+      try {
+        if (attempt > 0) {
+          print('🔄 [ML API] Retry attempt $attempt/$maxRetries');
+          await Future.delayed(Duration(seconds: attempt * 2)); // Exponential backoff
+        }
+
+        print('🔍 [ML API] Sending to: $_detectEndpoint');
+        print('📁 [ML API] Image path: $imagePath');
+        
+        // For now using multipart form (works with both mock PHP and future direct ML API)
+        var request = http.MultipartRequest('POST', Uri.parse(_detectEndpoint));
+        
+        // Add image file
+        request.files.add(
+          await http.MultipartFile.fromPath('data', imagePath)
+        );
+        
+        print('📤 [ML API] Request sent...');
+        
+        // Send request with timeout (90s for Hugging Face cold start)
+        var streamedResponse = await request.send().timeout(
+          const Duration(seconds: 90),
+          onTimeout: () {
+            throw TimeoutException('Request timeout after 90 seconds');
+          },
+        );
+        
+        var response = await http.Response.fromStream(streamedResponse);
       
       print('📥 [ML API] Status: ${response.statusCode}');
       print('📥 [ML API] Raw Body: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}...');
@@ -124,26 +135,80 @@ class ClothingDetectionService {
       } else {
         print('❌ [ML API] HTTP Error: ${response.statusCode}');
         print('❌ [ML API] Error Body: ${response.body}');
+        
+        // Special handling for 503 (HF Space error)
+        if (response.statusCode == 503) {
+          lastError = {
+            'success': false,
+            'message': 'Hugging Face Space sedang error. Silakan coba lagi dalam beberapa menit.',
+            'status_code': response.statusCode,
+            'hint': 'Cek status Space di: https://huggingface.co/spaces/crushedkatana/clothing-detection',
+          };
+          
+          // Retry on 503
+          if (attempt < maxRetries) {
+            attempt++;
+            continue;
+          }
+          return lastError;
+        }
+        
+        // Special handling for 502/504 (Gateway errors)
+        if (response.statusCode == 502 || response.statusCode == 504) {
+          lastError = {
+            'success': false,
+            'message': 'Server sedang sibuk. Silakan coba lagi.',
+            'status_code': response.statusCode,
+          };
+          
+          if (attempt < maxRetries) {
+            attempt++;
+            continue;
+          }
+          return lastError;
+        }
+        
         return {
           'success': false,
           'message': 'API Error ${response.statusCode}: ${response.body}',
           'status_code': response.statusCode,
         };
       }
-    } on TimeoutException catch (e) {
-      print('⏱️ [ML API] Timeout: $e');
-      return {
-        'success': false,
-        'message': 'Connection timeout. Please check your internet connection.',
-      };
-    } catch (e, stackTrace) {
-      print('❌ [ML API] Exception: $e');
-      print('❌ [ML API] StackTrace: ${stackTrace.toString().substring(0, 500)}');
-      return {
-        'success': false,
-        'message': 'Connection error: ${e.toString()}',
-      };
+      } on TimeoutException catch (e) {
+        print('⏱️ [ML API] Timeout: $e');
+        lastError = {
+          'success': false,
+          'message': 'Koneksi timeout. Hugging Face Space mungkin sedang starting up (cold start). Silakan tunggu 1-2 menit dan coba lagi.',
+          'hint': 'Cold start HF Space bisa memakan waktu 1-2 menit',
+        };
+        
+        if (attempt < maxRetries) {
+          attempt++;
+          continue;
+        }
+        return lastError;
+      } catch (e, stackTrace) {
+        print('❌ [ML API] Exception: $e');
+        print('❌ [ML API] StackTrace: ${stackTrace.toString().substring(0, 500)}');
+        lastError = {
+          'success': false,
+          'message': 'Tidak dapat terhubung ke server ML. Periksa koneksi internet Anda.',
+          'detail': e.toString(),
+        };
+        
+        if (attempt < maxRetries) {
+          attempt++;
+          continue;
+        }
+        return lastError;
+      }
     }
+    
+    // If all retries failed
+    return lastError ?? {
+      'success': false,
+      'message': 'Gagal menghubungi server setelah $maxRetries percobaan.',
+    };
   }
 
   /// Get riwayat deteksi pakaian user

@@ -29,6 +29,11 @@ Machine Learning API untuk deteksi kategori pakaian menggunakan HOG + SVM.
 
 ## 📡 API Endpoints
 
+This repo provides two deployment options:
+
+1) Hugging Face Space (existing): forwards requests to the Space endpoint.
+2) FastAPI Proxy (Docker): a lightweight FastAPI that proxies to Hugging Face or a local endpoint.
+
 ### POST /detect
 Detect clothing category from image.
 
@@ -54,3 +59,24 @@ Health check endpoint.
 - Feature Extraction: HOG (Histogram of Oriented Gradients)
 - Model: RBF SVC
 - Inference Time: 1-3 seconds per image
+
+## 🐳 FastAPI Proxy (Docker)
+
+Build and run a small FastAPI service that proxies `/detect` to Hugging Face Space:
+
+```bash
+docker build -f Dockerfile.fastapi -t clothing-detection-fastapi .
+docker run --rm -p 8000:8000 clothing-detection-fastapi
+```
+
+Test:
+
+```bash
+curl -X POST "http://localhost:8000/detect" -F "image=@/path/to/your.jpg"
+```
+
+Override upstream endpoint:
+
+```bash
+docker run --rm -e HF_ENDPOINT="http://192.168.1.2:5000/detect" -p 8000:8000 clothing-detection-fastapi
+```
