@@ -122,6 +122,8 @@ function updateUserProfile($conn) {
 
 /**
  * Get user statistics (products sold, ratings, etc.)
+ * For RT/RW: shows warga stats, verified count, products in RT
+ * For Warga: shows personal selling stats
  */
 function getUserStats($conn) {
     $userId = $_POST['user_id'] ?? $_GET['user_id'] ?? null;
@@ -133,39 +135,85 @@ function getUserStats($conn) {
     
     $userId = $conn->real_escape_string($userId);
     
-    // Get products count
-    $sqlProducts = "SELECT COUNT(*) as total_products FROM products WHERE seller_id = '$userId'";
-    $products = $conn->query($sqlProducts)->fetch_assoc()['total_products'] ?? 0;
+    // Get user role and RT number
+    $sqlUser = "SELECT role, rt_number FROM users WHERE id = '$userId'";
+    $userResult = $conn->query($sqlUser);
     
-    // Get sold products count (from transactions)
-    $sqlSold = "SELECT COUNT(DISTINCT p.id) as total_sold 
-                FROM products p 
-                JOIN transactions t ON p.id = t.product_id 
-                WHERE p.seller_id = '$userId' AND t.status = 'completed'";
-    $sold = $conn->query($sqlSold)->fetch_assoc()['total_sold'] ?? 0;
+    if ($userResult->num_rows === 0) {
+        sendJsonResponse(['error' => 'User not found'], 404);
+        return;
+    }
     
-    // Get favorites count
-    $sqlFavorites = "SELECT COUNT(*) as total_favorites 
-                     FROM product_favorites 
-                     WHERE product_id IN (SELECT id FROM products WHERE seller_id = '$userId')";
-    $favorites = $conn->query($sqlFavorites)->fetch_assoc()['total_favorites'] ?? 0;
+    $user = $userResult->fetch_assoc();
+    $role = $user['role'] ?? 'warga';
     
-    // Calculate average rating
-    $sqlRating = "SELECT AVG(rating) as avg_rating 
-                  FROM product_reviews 
-                  WHERE product_id IN (SELECT id FROM products WHERE seller_id = '$userId')";
-    $ratingResult = $conn->query($sqlRating)->fetch_assoc();
-    $avgRating = $ratingResult['avg_rating'] ? round($ratingResult['avg_rating'], 1) : 0;
-    
-    sendJsonResponse([
-        'success' => true,
-        'stats' => [
-            'total_products' => (int)$products,
-            'total_sold' => (int)$sold,
-            'total_favorites' => (int)$favorites,
-            'avg_rating' => (float)$avgRating
-        ]
-    ]);
+    if ($role === 'rt' || $role === 'rw') {
+        // RT/RW Stats - show community stats
+        $rtNumber = $user['rt_number'];
+        
+        // Total warga in RT
+        $sqlWarga = "SELECT COUNT(*) as total FROM users WHERE rt_number = '$rtNumber'";
+        $totalWarga = $conn->query($sqlWarga)->fetch_assoc()['total'] ?? 0;
+        
+        // Total verified warga
+        $sqlVerified = "SELECT COUNT(*) as total FROM users WHERE rt_number = '$rtNumber' AND is_verified = 1";
+        $totalVerified = $conn->query($sqlVerified)->fetch_assoc()['total'] ?? 0;
+        
+        // Total products in RT
+        $sqlProducts = "SELECT COUNT(*) as total FROM products p 
+                        INNER JOIN users u ON p.seller_id = u.id 
+                        WHERE u.rt_number = '$rtNumber'";
+        $totalProducts = $conn->query($sqlProducts)->fetch_assoc()['total'] ?? 0;
+        
+        // Pending approvals
+        $sqlPending = "SELECT COUNT(*) as total FROM users WHERE rt_number = '$rtNumber' AND is_verified = 0";
+        $pendingApproval = $conn->query($sqlPending)->fetch_assoc()['total'] ?? 0;
+        
+        sendJsonResponse([
+            'success' => true,
+            'stats' => [
+                'total_warga' => (int)$totalWarga,
+                'total_verified' => (int)$totalVerified,
+                'total_products' => (int)$totalProducts,
+                'pending_approval' => (int)$pendingApproval
+            ]
+        ]);
+    } else {
+        // Regular Warga Stats - personal selling stats
+        // Get products count
+        $sqlProducts = "SELECT COUNT(*) as total_products FROM products WHERE seller_id = '$userId'";
+        $products = $conn->query($sqlProducts)->fetch_assoc()['total_products'] ?? 0;
+        
+        // Get sold products count (from transactions)
+        $sqlSold = "SELECT COUNT(DISTINCT p.id) as total_sold 
+                    FROM products p 
+                    JOIN transactions t ON p.id = t.product_id 
+                    WHERE p.seller_id = '$userId' AND t.status = 'completed'";
+        $sold = $conn->query($sqlSold)->fetch_assoc()['total_sold'] ?? 0;
+        
+        // Get favorites count
+        $sqlFavorites = "SELECT COUNT(*) as total_favorites 
+                         FROM product_favorites 
+                         WHERE product_id IN (SELECT id FROM products WHERE seller_id = '$userId')";
+        $favorites = $conn->query($sqlFavorites)->fetch_assoc()['total_favorites'] ?? 0;
+        
+        // Calculate average rating
+        $sqlRating = "SELECT AVG(rating) as avg_rating 
+                      FROM product_reviews 
+                      WHERE product_id IN (SELECT id FROM products WHERE seller_id = '$userId')";
+        $ratingResult = $conn->query($sqlRating)->fetch_assoc();
+        $avgRating = $ratingResult['avg_rating'] ? round($ratingResult['avg_rating'], 1) : 0;
+        
+        sendJsonResponse([
+            'success' => true,
+            'stats' => [
+                'total_products' => (int)$products,
+                'total_sold' => (int)$sold,
+                'total_favorites' => (int)$favorites,
+                'avg_rating' => (float)$avgRating
+            ]
+        ]);
+    }
 }
 
 /**

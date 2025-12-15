@@ -103,6 +103,10 @@ class _RtDashboardScreenState extends State<RtDashboardScreen> {
   }
 
   Widget _buildHeader() {
+    final currentUser = AuthService.currentUser;
+    final rtNumber = widget.rt ?? currentUser?.rt ?? 'XX';
+    final rwNumber = currentUser?.rw ?? '02';
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
@@ -117,7 +121,7 @@ class _RtDashboardScreenState extends State<RtDashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Dashboard RT ${widget.rt ?? 'XX'}',
+            'Dashboard RT $rtNumber',
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -126,7 +130,7 @@ class _RtDashboardScreenState extends State<RtDashboardScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Kelurahan Maju Jaya, RW 02',
+            'Kelurahan Maju Jaya, RW $rwNumber',
             style: TextStyle(
               fontSize: 16,
               color: Colors.white.withValues(alpha: 0.9),

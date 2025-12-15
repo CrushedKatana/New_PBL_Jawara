@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:pbl_new/core/models/message_model.dart';
-import 'package:pbl_new/core/services/chat_service.dart';
-import 'package:pbl_new/core/services/auth_service.dart';
 import 'package:intl/intl.dart';
+import 'package:pbl_new/core/models/message_model.dart';
+import 'package:pbl_new/core/services/auth_service.dart';
+import 'package:pbl_new/core/services/chat_service.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String chatId;

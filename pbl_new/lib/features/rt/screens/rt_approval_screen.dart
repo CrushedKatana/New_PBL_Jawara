@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pbl_new/core/models/product_model.dart';
+import 'package:pbl_new/core/services/notification_service.dart';
 import 'package:pbl_new/core/services/product_service.dart';
 
 class RtApprovalScreen extends StatefulWidget {
@@ -12,6 +13,7 @@ class RtApprovalScreen extends StatefulWidget {
 
 class _RtApprovalScreenState extends State<RtApprovalScreen> {
   final ProductService _productService = ProductService();
+  final NotificationService _notificationService = NotificationService();
   List<ProductModel> _pendingProducts = [];
   bool _loading = true;
 
@@ -269,16 +271,7 @@ class _RtApprovalScreenState extends State<RtApprovalScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              // TODO: Implement approval endpoint
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Produk "${product.title}" telah disetujui'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-                _loadPendingProducts();
-              }
+              await _approveProduct(product);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
@@ -304,16 +297,7 @@ class _RtApprovalScreenState extends State<RtApprovalScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              // TODO: Implement rejection endpoint
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Produk "${product.title}" telah ditolak'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                _loadPendingProducts();
-              }
+              await _rejectProduct(product);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -323,5 +307,121 @@ class _RtApprovalScreenState extends State<RtApprovalScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _approveProduct(ProductModel product) async {
+    try {
+      // Show loading
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Menyetujui "${product.title}"...'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+
+      // TODO: Call actual approval endpoint from backend
+      // For now, simulate with delay
+      await Future.delayed(const Duration(seconds: 1));
+
+      // Remove from list immediately
+      if (mounted) {
+        setState(() {
+          _pendingProducts.removeWhere((p) => p.id == product.id);
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Produk "${product.title}" telah disetujui'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        // Send notification to seller
+        _sendApprovalNotification(product, approved: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _rejectProduct(ProductModel product) async {
+    try {
+      // Show loading
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Menolak "${product.title}"...'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+
+      // TODO: Call actual rejection endpoint from backend
+      // For now, simulate with delay
+      await Future.delayed(const Duration(seconds: 1));
+
+      // Remove from list immediately
+      if (mounted) {
+        setState(() {
+          _pendingProducts.removeWhere((p) => p.id == product.id);
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Produk "${product.title}" telah ditolak'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        // Send notification to seller
+        _sendApprovalNotification(product, approved: false);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _sendApprovalNotification(ProductModel product, {required bool approved}) {
+    // Send notification to seller
+    final message = approved
+        ? 'Produk Anda "${product.title}" telah disetujui oleh RT/RW!'
+        : 'Produk Anda "${product.title}" telah ditolak oleh RT/RW. Silakan perbaiki dan coba lagi.';
+    
+    final title = approved ? 'Produk Disetujui' : 'Produk Ditolak';
+
+    _notificationService.createNotification(
+      userId: product.sellerId,
+      title: title,
+      message: message,
+      type: approved ? 'product_approved' : 'product_rejected',
+      relatedId: product.id,
+      data: {
+        'product_id': product.id,
+        'product_title': product.title,
+        'approved': approved,
+      },
+    ).then((_) {
+      print('Notification sent to ${product.sellerId}');
+    }).catchError((e) {
+      print('Error sending notification: $e');
+    });
   }
 }

@@ -204,12 +204,43 @@ class _BerandaScreenState extends State<BerandaScreen> {
                                 'sports sepatu': '👟',
                                 'person': '👤',
                               };
-                              // Use icon from DB if exists, otherwise map by name
+                              // Resolve icon: prefer valid emoji or image URL; fallback to mapped emoji
                               String displayIcon = '👕'; // default
-                              if (category.icon != null && category.icon!.isNotEmpty) {
-                                displayIcon = category.icon!;
+                              final rawIcon = category.icon;
+                              final mappedFallback = iconMap[category.name.toLowerCase()] ?? '👕';
+
+                              bool looksLikeUrl(String s) => s.startsWith('http://') || s.startsWith('https://');
+                              bool isLikelyEmoji(String s) {
+                                if (s.isEmpty) return false;
+                                // Heuristic: emoji are usually non-alphanumeric and short
+                                final hasLettersOrDigits = RegExp(r'[A-Za-z0-9]').hasMatch(s);
+                                return !hasLettersOrDigits && s.runes.length <= 3; // allow modifiers
+                              }
+
+                              Widget iconWidget;
+                              if (rawIcon != null && rawIcon.isNotEmpty) {
+                                if (looksLikeUrl(rawIcon)) {
+                                  iconWidget = ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.network(
+                                      rawIcon,
+                                      width: 40,
+                                      height: 40,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stack) => const Icon(Icons.category_outlined, size: 28, color: Colors.white),
+                                    ),
+                                  );
+                                } else if (isLikelyEmoji(rawIcon)) {
+                                  displayIcon = rawIcon;
+                                  iconWidget = Text(displayIcon, style: const TextStyle(fontSize: 28, color: Colors.white));
+                                } else {
+                                  // Invalid string (e.g., 'person'), use mapped fallback
+                                  displayIcon = mappedFallback;
+                                  iconWidget = Text(displayIcon, style: const TextStyle(fontSize: 28, color: Colors.white));
+                                }
                               } else {
-                                displayIcon = iconMap[category.name.toLowerCase()] ?? '👕';
+                                displayIcon = mappedFallback;
+                                iconWidget = Text(displayIcon, style: const TextStyle(fontSize: 28, color: Colors.white));
                               }
                               return GestureDetector(
                                 onTap: () {
@@ -236,12 +267,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                                             ),
                                           ],
                                         ),
-                                        child: Center(
-                                          child: Text(
-                                            displayIcon,
-                                            style: const TextStyle(fontSize: 28),
-                                          ),
-                                        ),
+                                        child: Center(child: iconWidget),
                                       ),
                                       const SizedBox(height: 6),
                                       Text(

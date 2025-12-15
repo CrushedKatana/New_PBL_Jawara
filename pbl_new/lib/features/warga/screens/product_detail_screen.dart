@@ -4,6 +4,7 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pbl_new/core/models/product_model.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:pbl_new/core/services/auth_service.dart';
 
 import 'chat_detail_screen.dart';
@@ -257,7 +258,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: () async {
+                        final phone = widget.product.sellerPhone;
+                        if (phone == null || phone.trim().isEmpty) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Nomor telepon penjual tidak tersedia')),
+                            );
+                          }
+                          return;
+                        }
+                        final uri = Uri(scheme: 'tel', path: phone.trim());
+                        final can = await canLaunchUrl(uri);
+                        if (can) {
+                          await launchUrl(uri);
+                        } else {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Tidak bisa membuka telepon ke $phone')),
+                            );
+                          }
+                        }
+                      },
                       icon: const Icon(Icons.phone),
                       label: const Text('Hubungi'),
                       style: ElevatedButton.styleFrom(
