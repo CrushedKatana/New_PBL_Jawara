@@ -1,0 +1,85 @@
+# Sensitive Files - Credentials and Testing Data
+USERS_CREDENTIALS.md
+credentials.json
+secrets.json
+.env
+.env.local
+.env.*.local
+
+# ML Training - Exclude large datasets and models
+ml_training/dataset/
+ml_training/filtered_images/
+ml_training/*.pkl
+ml_training/models/*.pkl
+ml_training/models/*.h5
+ml_training/models/*.joblib
+
+# Nested Git Repos - Separate deployments (HF Space clones)
+clothing-detection-api/
+pbl_new/clothing_clasification/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+ENV/
+.conda/
+
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Firebase
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Backend/PHP
+backend/vendor/
+backend/.env
+
+# Android
+*.jks
+*.keystore
+local.properties
+.gradle/
+gradle-wrapper.jar
+
+# iOS
+*.ipa
+*.dSYM.zip
+*.dSYM
+Pods/
+.symlinks/
+
+# Large files
+*.zip
+*.tar.gz
+*.rar
+*.7z
