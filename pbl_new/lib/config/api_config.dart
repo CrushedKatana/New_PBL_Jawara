@@ -11,6 +11,12 @@ class ApiConfig {
   static const String authEndpoint = '$baseUrl/auth.php';
   static const String chatEndpoint = '$baseUrl/chat.php';
   static const String categoriesEndpoint = '$baseUrl/categories.php';
+  static const String rtMetricsEndpoint = '$baseUrl/rt_metrics.php';
+  static const String activitiesEndpoint = '$baseUrl/activities.php';
+  
+  // ML Detection API (Hugging Face Space)
+  static const String mlDetectionEndpoint = 'https://crushedkatana-clothing-clasification.hf.space/detect';
+  static const String mlDetectionHistoryEndpoint = '$baseUrl/ml_detections.php';
   
   // Timeout settings
   static const Duration timeout = Duration(seconds: 30);
