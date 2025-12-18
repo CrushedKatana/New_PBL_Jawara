@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+
 
 class ApiConfig {
   // ⚠️ PRODUCTION CONFIG - Update sesuai backend URL Anda
@@ -17,12 +17,14 @@ class ApiConfig {
     const envBase = String.fromEnvironment('API_BASE_URL');
     if (envBase.isNotEmpty) return envBase;
 
-    if (kIsWeb) {
-      return 'http://$networkIp/jawara/backend';
-    }
+    // NGROK TUNNEL - Backend accessible from anywhere
+    return 'https://pearle-vesselled-ted.ngrok-free.dev/jawara/backend';
 
-    // Mobile devices: use network IP untuk bisa diakses dari HP
-    return 'http://$networkIp/jawara/backend';
+    // Local Network (uncomment if not using ngrok)
+    // if (kIsWeb) {
+    //   return 'http://$networkIp/jawara/backend';
+    // }
+    // return 'http://$networkIp/jawara/backend';
   }
 
   // Endpoints (lazy getters, karena baseUrl bukan const)
