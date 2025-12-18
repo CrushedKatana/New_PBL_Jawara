@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pbl_new/config/api_config.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/services/clothing_detection_service.dart';
@@ -49,21 +50,16 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
   Future<void> _testApiConnection() async {
     try {
       print('🧪 Testing API connection...');
-      final response = await http.get(Uri.parse('http://192.168.1.7:5000/health')).timeout(
-        const Duration(seconds: 5),
+      // Check HF Space health (use the actual endpoint from ApiConfig)
+      final healthUrl = ApiConfig.mlDetectionEndpoint.replaceAll('/detect', '/health');
+      final response = await http.get(Uri.parse(healthUrl)).timeout(
+        const Duration(seconds: 8),
       );
       print('✅ API Health: ${response.statusCode} - ${response.body}');
     } catch (e) {
       print('❌ API Connection failed: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Warning: Cannot connect to ML API. Check network connection.'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 5),
-          ),
-        );
-      }
+      // Don't show warning snackbar - akan ada retry logic di detectClothing()
+      // User akan tahu jika memang gagal saat melakukan deteksi
     }
   }
 

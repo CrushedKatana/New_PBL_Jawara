@@ -32,7 +32,7 @@ class ApiConfig {
   static String get categoriesEndpoint => '$baseUrl/categories.php';
   
   // ML Detection - Hugging Face Space with Docker (Direct API, no queue!)
-  static String get mlDetectionEndpoint => 'https://crushedkatana-clothing-detection.hf.space/detect';
+  static String get mlDetectionEndpoint => 'https://crushedkatana-clothing-clasification.hf.space/detect';
   // Local wrapper: 'http://$networkIp:5000/detect'
   // Mock: 'http://$networkIp/jawara/backend/ml_detection_mock.php'
   
