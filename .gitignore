@@ -14,10 +14,6 @@ ml_training/models/*.pkl
 ml_training/models/*.h5
 ml_training/models/*.joblib
 
-# Nested Git Repos - Separate deployments (HF Space clones)
-clothing-detection-api/
-pbl_new/clothing_clasification/
-
 # Python
 __pycache__/
 *.py[cod]

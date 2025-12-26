@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pbl_new/core/services/auth_service.dart';
+import 'package:pbl_new/core/services/profile_service.dart';
+import 'package:pbl_new/features/settings/settings_home_page.dart';
 
 class ProfilScreen extends StatefulWidget {
   const ProfilScreen({super.key});
@@ -9,16 +11,104 @@ class ProfilScreen extends StatefulWidget {
 }
 
 class _ProfilScreenState extends State<ProfilScreen> {
+  Map<String, dynamic>? _profileData;
+  Map<String, dynamic>? _statsData;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
+  }
+
+  Future<void> _loadProfileData() async {
+    final currentUser = AuthService.currentUser;
+    if (currentUser == null) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Load profile and stats in parallel with timeout
+      final results = await Future.wait([
+        ProfileService.getUserProfile(currentUser.id),
+        ProfileService.getUserStats(currentUser.id),
+      ]).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => [
+          {'success': false, 'message': 'Timeout'},
+          {'success': false, 'message': 'Timeout'}
+        ],
+      );
+
+      if (mounted) {
+        setState(() {
+          _profileData = results[0];
+          _statsData = results[1];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading profile: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Logout'),
+        content: const Text('Apakah Anda yakin ingin keluar?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await AuthService.logout();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = AuthService.currentUser;
+
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF2D3FE3),
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+
+    final userData = _profileData?['user'];
+    final stats = _statsData?['stats'];
 
     return Scaffold(
       backgroundColor: const Color(0xFF2D3FE3),
       body: SafeArea(
         child: currentUser == null
             ? const Center(child: Text('Silakan login', style: TextStyle(color: Colors.white)))
-            : SingleChildScrollView(
+            : RefreshIndicator(
+                onRefresh: _loadProfileData,
+                child: SingleChildScrollView(
                 child: Column(
                   children: [
                     // Header
@@ -85,16 +175,16 @@ class _ProfilScreenState extends State<ProfilScreen> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            currentUser.name,
+                                            userData?['name'] ?? currentUser.name,
                                             style: const TextStyle(
                                               fontSize: 20,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
                                           const SizedBox(height: 4),
-                                          const Text(
-                                            'Warga',
-                                            style: TextStyle(
+                                          Text(
+                                            userData?['role'] ?? 'Warga',
+                                            style: const TextStyle(
                                               fontSize: 14,
                                               color: Colors.grey,
                                             ),
@@ -130,15 +220,21 @@ class _ProfilScreenState extends State<ProfilScreen> {
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                         decoration: BoxDecoration(
-                                          color: Colors.green[100],
+                                          color: (userData?['is_verified'] == 1)
+                                              ? Colors.green[100]
+                                              : Colors.orange[100],
                                           borderRadius: BorderRadius.circular(12),
                                         ),
                                         child: Text(
-                                          'Terverifikasi',
+                                          (userData?['is_verified'] == 1)
+                                              ? 'Terverifikasi'
+                                              : 'Pending',
                                           style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.green[700],
+                                            color: (userData?['is_verified'] == 1)
+                                                ? Colors.green[700]
+                                                : Colors.orange[700],
                                           ),
                                         ),
                                       ),
@@ -164,13 +260,23 @@ class _ProfilScreenState extends State<ProfilScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        currentUser.address ?? 'RT 05 / RW 02, Kelurahan Maju Jaya',
+                                        userData?['address'] ?? currentUser.address ?? 'Alamat belum diatur',
                                         style: const TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w500,
                                           color: Colors.black87,
                                         ),
                                       ),
+                                      if (userData?['rt_number'] != null) ...[
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'RT ${userData['rt_number']} / RW ${userData['rw_number'] ?? ''}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -187,9 +293,21 @@ class _ProfilScreenState extends State<ProfilScreen> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
-                                _buildStatItem(Icons.shopping_bag, '12', 'Terjual'),
-                                _buildStatItem(Icons.favorite, '28', 'Favorit'),
-                                _buildStatItem(Icons.star, '4.8', 'Rating'),
+                                _buildStatItem(
+                                  Icons.shopping_bag,
+                                  '${stats?['total_sold'] ?? 0}',
+                                  'Terjual',
+                                ),
+                                _buildStatItem(
+                                  Icons.favorite,
+                                  '${stats?['total_favorites'] ?? 0}',
+                                  'Favorit',
+                                ),
+                                _buildStatItem(
+                                  Icons.star,
+                                  '${stats?['avg_rating'] ?? 0}',
+                                  'Rating',
+                                ),
                               ],
                             ),
                           ),
@@ -208,7 +326,14 @@ class _ProfilScreenState extends State<ProfilScreen> {
                             ),
                             title: const Text('Pengaturan Akun'),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () {},
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SettingsHomePage(),
+                                ),
+                              );
+                            },
                           ),
 
                           ListTile(
@@ -224,7 +349,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                             trailing: Switch(
                               value: false,
                               onChanged: (value) {},
-                              activeColor: const Color(0xFF2D3FE3),
+                              activeThumbColor: const Color(0xFF2D3FE3),
                             ),
                           ),
 
@@ -248,12 +373,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: OutlinedButton.icon(
-                              onPressed: () async {
-                                await AuthService.logout();
-                                if (context.mounted) {
-                                  Navigator.pushReplacementNamed(context, '/login');
-                                }
-                              },
+                              onPressed: _handleLogout,
                               icon: const Icon(Icons.logout, color: Colors.red),
                               label: const Text(
                                 'Keluar',
@@ -295,6 +415,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                   ],
                 ),
               ),
+            ),
       ),
     );
   }

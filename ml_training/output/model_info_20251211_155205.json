@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-12-11 15:52:05",
+  "model_type": "RBF SVC with Probability",
+  "best_params": {
+    "C": 10,
+    "class_weight": "balanced",
+    "gamma": "scale",
+    "kernel": "rbf"
+  },
+  "num_classes": 4,
+  "train_accuracy": 1.0,
+  "val_accuracy": 0.8646616541353384,
+  "test_accuracy": 0.8795483061480552,
+  "avg_confidence": 0.8820599234225363,
+  "num_train_samples": 2786,
+  "num_val_samples": 399,
+  "num_test_samples": 797,
+  "feature_dim": 8100,
+  "augmentation": true,
+  "grid_search_cv_folds": 3,
+  "total_grid_combinations": 32
+}

@@ -1,23 +1,54 @@
+
+
 class ApiConfig {
-  // Ganti dengan IP address komputer Anda jika testing di device fisik
-  // Untuk emulator Android: gunakan 10.0.2.2
-  // Untuk emulator iOS: gunakan localhost
-  // Untuk device fisik: gunakan IP address komputer (misal: 192.168.1.100)
+  // ⚠️ PRODUCTION CONFIG - Update sesuai backend URL Anda
+  // Gunakan --dart-define API_BASE_URL="http://<IP_PC>/jawara/backend" saat
+  // menjalankan di device fisik. Default:
+  //   - Web: mengikuti origin browser (http://localhost:xxxx/jawara/backend)
+  //   - Emulator Android: http://10.0.2.2/jawara/backend
+  //   - Device fisik: set manual via --dart-define ke IP PC/LAN
+
+  static final String baseUrl = _resolveBaseUrl();
+
+  // Network IP PC untuk akses dari device lain (update sesuai IP PC)
+  static const String networkIp = '192.168.1.2'; // UPDATED! IP berubah dari 192.168.1.7
   
-  static const String baseUrl = 'http://localhost/marketplace_api';
+  static String _resolveBaseUrl() {
+    const envBase = String.fromEnvironment('API_BASE_URL');
+    if (envBase.isNotEmpty) return envBase;
+
+    // NGROK TUNNEL - Backend accessible from anywhere
+    return 'https://pearle-vesselled-ted.ngrok-free.dev/jawara/backend';
+
+    // Local Network (uncomment if not using ngrok)
+    // if (kIsWeb) {
+    //   return 'http://$networkIp/jawara/backend';
+    // }
+    // return 'http://$networkIp/jawara/backend';
+  }
+
+  // Endpoints (lazy getters, karena baseUrl bukan const)
+  static String get productsEndpoint => '$baseUrl/products.php';
+  static String get authEndpoint => '$baseUrl/auth.php';
+  static String get chatEndpoint => '$baseUrl/chat.php';
+  static String get categoriesEndpoint => '$baseUrl/categories.php';
   
-  // Endpoints
-  static const String productsEndpoint = '$baseUrl/products.php';
-  static const String authEndpoint = '$baseUrl/auth.php';
-  static const String chatEndpoint = '$baseUrl/chat.php';
-  static const String categoriesEndpoint = '$baseUrl/categories.php';
-  static const String rtMetricsEndpoint = '$baseUrl/rt_metrics.php';
-  static const String activitiesEndpoint = '$baseUrl/activities.php';
+  // ML Detection - Hugging Face Space with Docker (Direct API, no queue!)
+  static String get mlDetectionEndpoint => 'https://crushedkatana-clothing-clasification.hf.space/detect';
+  // Local wrapper: 'http://$networkIp:5000/detect'
+  // Mock: 'http://$networkIp/jawara/backend/ml_detection_mock.php'
   
-  // ML Detection API (Hugging Face Space)
-  static const String mlDetectionEndpoint = 'https://crushedkatana-clothing-clasification.hf.space/detect';
-  static const String mlDetectionHistoryEndpoint = '$baseUrl/ml_detections.php';
+  // ML History - still using PHP backend
+  static String get mlDetectionHistoryEndpoint => '$baseUrl/ml_detection_history.php';
+  static String get rtMetricsEndpoint => '$baseUrl/rt_metrics.php';
+  static String get activitiesEndpoint => '$baseUrl/activities.php';
+  static String get transactionsEndpoint => '$baseUrl/transactions.php';
+  static String get usersEndpoint => '$baseUrl/users.php';
   
-  // Timeout settings
-  static const Duration timeout = Duration(seconds: 30);
+  // Timeout settings - reduced for better mobile experience
+  static const Duration timeout = Duration(seconds: 15); // Reduced from 30
+  static const Duration shortTimeout = Duration(seconds: 8); // For quick operations
+  
+  // Firebase Cloud Messaging (update dengan Server Key dari Firebase Console)
+  static const String fcmServerKey = 'YOUR_FCM_SERVER_KEY_HERE';
 }

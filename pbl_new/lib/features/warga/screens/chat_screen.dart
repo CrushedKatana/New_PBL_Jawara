@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:pbl_new/core/models/message_model.dart';
 import 'package:pbl_new/core/services/auth_service.dart';
+import 'package:pbl_new/core/services/chat_service.dart';
+
+import 'chat_detail_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -9,6 +13,32 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+  List<MessageModel> _conversations = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConversations();
+  }
+
+  Future<void> _loadConversations() async {
+    final currentUser = AuthService.currentUser;
+    if (currentUser == null) return;
+
+    setState(() => _isLoading = true);
+
+    final chatService = ChatService();
+    final conversations = await chatService.getConversations(currentUser.id);
+
+    if (mounted) {
+      setState(() {
+        _conversations = conversations;
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = AuthService.currentUser;
@@ -29,51 +59,72 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: currentUser == null
           ? const Center(child: Text('Silakan login terlebih dahulu'))
-          : _buildDummyChatList(),
+          : _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _conversations.isEmpty
+                  ? _buildEmptyState()
+                  : _buildConversationList(),
     );
   }
 
-  Widget _buildDummyChatList() {
-    final dummyChats = [
-      {
-        'name': 'Ibu Siti',
-        'message': 'Baik, saya tunggu ya',
-        'time': '10:30',
-        'unread': 2,
-        'avatar': 'IS',
-        'verified': true,
-      },
-      {
-        'name': 'Pak Budi',
-        'message': 'Harga masih bisa nego?',
-        'time': '09:15',
-        'unread': 0,
-        'avatar': 'PB',
-        'verified': true,
-      },
-      {
-        'name': 'Dimas',
-        'message': 'Foto lengkapnya ada?',
-        'time': 'Kemarin',
-        'unread': 1,
-        'avatar': 'D',
-        'verified': false,
-      },
-      {
-        'name': 'Toko Sepatu Jaya',
-        'message': 'Terima kasih sudah belanja',
-        'time': '2 hari lalu',
-        'unread': 0,
-        'avatar': 'TSJ',
-        'verified': true,
-      },
-    ];
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text(
+            'Belum ada percakapan',
+            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
+  }
 
-    return ListView.builder(
-      itemCount: dummyChats.length,
-      itemBuilder: (context, index) {
-        final chat = dummyChats[index];
-        final hasUnread = (chat['unread'] as int) > 0;
+  Widget _buildConversationList() {
+    final currentUser = AuthService.currentUser;
+    if (currentUser == null) return const SizedBox();
+
+    return RefreshIndicator(
+      onRefresh: _loadConversations,
+      child: ListView.builder(
+        itemCount: _conversations.length,
+        itemBuilder: (context, index) {
+          final msg = _conversations[index];
+          
+          // Determine the other person in conversation
+          final isCurrentUserSender = msg.senderId == currentUser.id;
+          // final otherUserId = isCurrentUserSender ? msg.receiverId : msg.senderId;
+          final otherUserName = isCurrentUserSender ? msg.receiverName : msg.senderName;
+          final otherUserPhoto = isCurrentUserSender ? msg.receiverPhoto : msg.senderPhoto;
+          
+          final hasUnread = !msg.isRead && msg.receiverId == currentUser.id;
+
+        // Get initials for avatar
+        String initials = 'U';
+        if (otherUserName != null && otherUserName.isNotEmpty) {
+          final parts = otherUserName.split(' ');
+          initials = parts.length > 1 
+              ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
+              : otherUserName.substring(0, otherUserName.length >= 2 ? 2 : 1).toUpperCase();
+        }
+
+        // Time formatting
+        String timeAgo = 'Baru saja';
+        if (msg.createdAt != null) {
+          final diff = DateTime.now().difference(msg.createdAt!);
+          if (diff.inMinutes < 60) {
+            timeAgo = '${diff.inMinutes} menit lalu';
+          } else if (diff.inHours < 24) {
+            timeAgo = '${diff.inHours} jam lalu';
+          } else if (diff.inDays < 7) {
+            timeAgo = '${diff.inDays} hari lalu';
+          } else {
+            timeAgo = '${(diff.inDays / 7).floor()} minggu lalu';
+          }
+        }
 
         return Container(
           decoration: BoxDecoration(
@@ -86,36 +137,29 @@ class _ChatScreenState extends State<ChatScreen> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             leading: CircleAvatar(
               backgroundColor: const Color(0xFF2D3FE3),
-              child: Text(
-                chat['avatar'] as String,
+              backgroundImage: otherUserPhoto != null ? NetworkImage(otherUserPhoto) : null,
+              child: otherUserPhoto == null ? Text(
+                initials,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
-              ),
+              ) : null,
             ),
             title: Row(
               children: [
                 Flexible(
                   child: Text(
-                    chat['name'] as String,
+                    otherUserName ?? 'User',
                     style: TextStyle(
                       fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (chat['verified'] == true) ...[
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.verified,
-                    size: 16,
-                    color: Color(0xFF2D3FE3),
-                  ),
-                ],
                 const Spacer(),
                 Text(
-                  chat['time'] as String,
+                  timeAgo,
                   style: TextStyle(
                     fontSize: 12,
                     color: hasUnread ? const Color(0xFF2D3FE3) : Colors.grey,
@@ -128,7 +172,7 @@ class _ChatScreenState extends State<ChatScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    chat['message'] as String,
+                    msg.message,
                     style: TextStyle(
                       color: hasUnread ? Colors.black87 : Colors.grey,
                       fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
@@ -145,9 +189,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       color: const Color(0xFF2D3FE3),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      '${chat['unread']}',
-                      style: const TextStyle(
+                    child: const Text(
+                      '1',
+                      style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -157,14 +201,18 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
             onTap: () {
-              // Navigate to chat detail with dummy messages
+              // Navigate to chat detail
+              final otherUserId = isCurrentUserSender ? msg.receiverId : msg.senderId;
+              final otherName = isCurrentUserSender ? msg.receiverName : msg.senderName;
+              
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => _ChatDetailDemoScreen(
-                    userName: chat['name'] as String,
-                    userAvatar: chat['avatar'] as String,
-                    isVerified: chat['verified'] as bool,
+                  builder: (context) => ChatDetailScreen(
+                    chatId: msg.id,
+                    otherUserId: otherUserId,
+                    otherUserName: otherName ?? 'User',
+                    otherUserVerified: false,
                   ),
                 ),
               );
@@ -172,11 +220,13 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         );
       },
+    ),
     );
   }
 }
 
-// Chat Detail Demo Screen
+/*
+// Chat Detail Demo Screen - Removed (use real chat detail screen instead)
 class _ChatDetailDemoScreen extends StatefulWidget {
   final String userName;
   final String userAvatar;
@@ -422,3 +472,4 @@ class _ChatDetailDemoScreenState extends State<_ChatDetailDemoScreen> {
     );
   }
 }
+*/

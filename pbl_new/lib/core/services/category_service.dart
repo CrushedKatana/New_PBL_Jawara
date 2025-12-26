@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:pbl_new/config/api_config.dart';
 import 'package:pbl_new/core/models/category_model.dart';
@@ -22,42 +23,10 @@ class CategoryService {
           return categories;
         }
       }
-      // Return dummy data if API fails
-      return _getDummyCategories();
+      return [];
     } catch (e) {
       print('Error getting categories: $e');
-      // Return dummy data on error
-      return _getDummyCategories();
+      return [];
     }
-  }
-
-  List<CategoryModel> _getDummyCategories() {
-    return [
-      CategoryModel(
-        id: '1',
-        name: 'Baju',
-        icon: '👕',
-      ),
-      CategoryModel(
-        id: '2',
-        name: 'Celana',
-        icon: '👖',
-      ),
-      CategoryModel(
-        id: '3',
-        name: 'Sepatu',
-        icon: '👟',
-      ),
-      CategoryModel(
-        id: '4',
-        name: 'Tas',
-        icon: '👜',
-      ),
-      CategoryModel(
-        id: '5',
-        name: 'Aksesoris',
-        icon: '⌚',
-      ),
-    ];
   }
 }

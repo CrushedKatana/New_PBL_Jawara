@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pbl_new/core/services/auth_service.dart';
+import 'package:pbl_new/core/services/profile_service.dart';
+import 'package:pbl_new/features/settings/settings_home_page.dart';
 
 class RtProfilScreen extends StatefulWidget {
   const RtProfilScreen({super.key});
@@ -9,16 +11,103 @@ class RtProfilScreen extends StatefulWidget {
 }
 
 class _RtProfilScreenState extends State<RtProfilScreen> {
+  Map<String, dynamic>? _profileData;
+  Map<String, dynamic>? _statsData;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
+  }
+
+  Future<void> _loadProfileData() async {
+    final currentUser = AuthService.currentUser;
+    if (currentUser == null) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Load profile and stats in parallel with timeout
+      final results = await Future.wait([
+        ProfileService.getUserProfile(currentUser.id),
+        ProfileService.getUserStats(currentUser.id),
+      ]).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => [
+          {'success': false, 'message': 'Timeout'},
+          {'success': false, 'message': 'Timeout'}
+        ],
+      );
+
+      if (mounted) {
+        setState(() {
+          _profileData = results[0];
+          _statsData = results[1];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading RT profile: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Logout'),
+        content: const Text('Apakah Anda yakin ingin keluar?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await AuthService.logout();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = AuthService.currentUser;
+
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF2D3FE3),
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+
+    final userData = _profileData?['user'];
 
     return Scaffold(
       backgroundColor: const Color(0xFF2D3FE3),
       body: SafeArea(
         child: currentUser == null
             ? const Center(child: Text('Silakan login', style: TextStyle(color: Colors.white)))
-            : SingleChildScrollView(
+            : RefreshIndicator(
+                onRefresh: _loadProfileData,
+                child: SingleChildScrollView(
                 child: Column(
                   children: [
                     // Header
@@ -83,16 +172,16 @@ class _RtProfilScreenState extends State<RtProfilScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        currentUser.name,
+                                        userData?['name'] ?? currentUser.name,
                                         style: const TextStyle(
                                           fontSize: 20,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      const Text(
-                                        'Ketua RT 05',
-                                        style: TextStyle(
+                                      Text(
+                                        'Ketua RT ${userData?['rt_number'] ?? ''}',
+                                        style: const TextStyle(
                                           fontSize: 14,
                                           color: Colors.grey,
                                         ),
@@ -105,6 +194,46 @@ class _RtProfilScreenState extends State<RtProfilScreen> {
                           ),
 
                           const SizedBox(height: 24),
+
+                          // Stats for RT
+                          if (_statsData != null && _statsData!['success'] == true) ...[
+                            Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 20),
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                children: [
+                                  _buildStatItem(
+                                    Icons.verified_user,
+                                    '${_statsData!['stats']['total_verified'] ?? 0}',
+                                    'Warga Verified',
+                                  ),
+                                  _buildStatItem(
+                                    Icons.inventory_2,
+                                    '${_statsData!['stats']['total_products'] ?? 0}',
+                                    'Produk RT',
+                                  ),
+                                  _buildStatItem(
+                                    Icons.pending_actions,
+                                    '${_statsData!['stats']['pending_approval'] ?? 0}',
+                                    'Pending',
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
 
                           const Divider(height: 1),
 
@@ -120,7 +249,14 @@ class _RtProfilScreenState extends State<RtProfilScreen> {
                             ),
                             title: const Text('Pengaturan Akun'),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () {},
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SettingsHomePage(),
+                                ),
+                              );
+                            },
                           ),
 
                           ListTile(
@@ -136,7 +272,7 @@ class _RtProfilScreenState extends State<RtProfilScreen> {
                             trailing: Switch(
                               value: false,
                               onChanged: (value) {},
-                              activeColor: const Color(0xFF2D3FE3),
+                              activeThumbColor: const Color(0xFF2D3FE3),
                             ),
                           ),
 
@@ -160,12 +296,7 @@ class _RtProfilScreenState extends State<RtProfilScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: OutlinedButton.icon(
-                              onPressed: () async {
-                                await AuthService.logout();
-                                if (context.mounted) {
-                                  Navigator.pushReplacementNamed(context, '/login');
-                                }
-                              },
+                              onPressed: _handleLogout,
                               icon: const Icon(Icons.logout, color: Colors.red),
                               label: const Text(
                                 'Keluar',
@@ -207,7 +338,34 @@ class _RtProfilScreenState extends State<RtProfilScreen> {
                   ],
                 ),
               ),
+            ),
       ),
+    );
+  }
+
+  Widget _buildStatItem(IconData icon, String value, String label) {
+    return Column(
+      children: [
+        Icon(icon, color: const Color(0xFF2D3FE3), size: 24),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF2D3FE3),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }

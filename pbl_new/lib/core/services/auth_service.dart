@@ -1,8 +1,9 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pbl_new/config/api_config.dart';
 import 'package:pbl_new/core/models/user_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   static UserModel? _currentUser;
@@ -19,7 +20,12 @@ class AuthService {
           'email': email,
           'password': password,
         }),
-      ).timeout(ApiConfig.timeout);
+      ).timeout(
+        ApiConfig.timeout,
+        onTimeout: () {
+          throw Exception('Request timeout - check your internet connection');
+        },
+      );
 
       final data = json.decode(response.body);
 
@@ -30,8 +36,16 @@ class AuthService {
       } else {
         return {'success': false, 'error': data['error'] ?? 'Login failed'};
       }
+    } on Exception catch (e) {
+      String errorMsg = e.toString();
+      if (errorMsg.contains('timeout')) {
+        return {'success': false, 'error': 'Koneksi timeout. Cek internet Anda.'};
+      } else if (errorMsg.contains('SocketException') || errorMsg.contains('Failed host lookup')) {
+        return {'success': false, 'error': 'Tidak dapat terhubung ke server. Pastikan PC backend menyala dan HP terhubung WiFi yang sama.'};
+      }
+      return {'success': false, 'error': 'Error koneksi: ${e.toString()}'};
     } catch (e) {
-      return {'success': false, 'error': 'Connection error: $e'};
+      return {'success': false, 'error': 'Error tidak terduga: $e'};
     }
   }
 
@@ -122,42 +136,6 @@ class AuthService {
     _currentUser = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('user_session');
-  }
-
-  // Set demo user for testing
-  static void setDemoUser(String role) {
-    if (role == 'warga') {
-      _currentUser = UserModel(
-        id: '1',
-        name: 'Budi Santoso',
-        email: 'budi.santoso@email.com',
-        phone: '081234567890',
-        address: 'RT 05 / RW 02, Kelurahan Maju Jaya',
-        rt: '05',
-        rw: '02',
-        userType: 'warga',
-      );
-    } else if (role == 'rt') {
-      _currentUser = UserModel(
-        id: '100',
-        name: 'Pak RT 05',
-        email: 'rt05@email.com',
-        phone: '081234567899',
-        address: 'RT 05 / RW 02, Kelurahan Maju Jaya',
-        rt: '05',
-        rw: '02',
-        userType: 'rt',
-      );
-    } else if (role == 'admin') {
-      _currentUser = UserModel(
-        id: '999',
-        name: 'Admin System',
-        email: 'admin@jawara.com',
-        phone: '081234567888',
-        address: 'Kantor Kelurahan Maju Jaya',
-        userType: 'admin',
-      );
-    }
   }
 
   // Check if user is logged in

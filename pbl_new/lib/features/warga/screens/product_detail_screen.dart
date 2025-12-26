@@ -1,7 +1,12 @@
+import 'dart:io';
+
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
-import 'package:pbl_new/core/models/product_model.dart';
 import 'package:intl/intl.dart';
+import 'package:pbl_new/core/models/product_model.dart';
 import 'package:pbl_new/core/services/auth_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import 'chat_detail_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -14,6 +19,8 @@ class ProductDetailScreen extends StatefulWidget {
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
+  int _currentIndex = 0;
+
   @override
   void initState() {
     super.initState();
@@ -27,10 +34,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
+        bottom: false, // Don't add padding at bottom
         child: Column(
           children: [
             Expanded(
               child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 100), // Add padding for bottom action bar
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -38,23 +47,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     Stack(
                       children: [
                         SizedBox(
-                          height: 400,
-                          child: (widget.product.imageUrl ?? '').isNotEmpty
-                              ? Image.network(
-                                  widget.product.imageUrl!,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: Colors.grey[200],
-                                      child: const Icon(Icons.image, size: 100),
-                                    );
-                                  },
-                                )
-                              : Container(
-                                  color: Colors.grey[200],
-                                  child: const Icon(Icons.image, size: 100),
-                                ),
+                          height: 380,
+                          width: double.infinity,
+                          child: _buildImageCarousel(),
                         ),
                         Positioned(
                           top: 16,
@@ -263,7 +258,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: () async {
+                        final phone = widget.product.sellerPhone;
+                        if (phone == null || phone.trim().isEmpty) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Nomor telepon penjual tidak tersedia')),
+                            );
+                          }
+                          return;
+                        }
+                        final uri = Uri(scheme: 'tel', path: phone.trim());
+                        final can = await canLaunchUrl(uri);
+                        if (can) {
+                          await launchUrl(uri);
+                        } else {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Tidak bisa membuka telepon ke $phone')),
+                            );
+                          }
+                        }
+                      },
                       icon: const Icon(Icons.phone),
                       label: const Text('Hubungi'),
                       style: ElevatedButton.styleFrom(
@@ -309,6 +325,82 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildImageCarousel() {
+    final images = widget.product.imageUrls.isNotEmpty
+        ? widget.product.imageUrls
+        : [(widget.product.imageUrl ?? '').isNotEmpty ? widget.product.imageUrl! : ''];
+
+    return Column(
+      children: [
+        Expanded(
+          child: CarouselSlider.builder(
+            itemCount: images.length,
+            options: CarouselOptions(
+              viewportFraction: 1,
+              enableInfiniteScroll: images.length > 1,
+              height: double.infinity,
+              onPageChanged: (index, reason) {
+                setState(() => _currentIndex = index);
+              },
+            ),
+            itemBuilder: (context, index, realIdx) {
+              final url = images[index];
+              if (url.isEmpty) {
+                return _buildPlaceholder();
+              }
+              final isRemote = url.startsWith('http');
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: isRemote
+                    ? Image.network(
+                        url,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+                      )
+                    : Image.file(
+                        File(url),
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+                      ),
+              );
+            },
+          ),
+        ),
+        if (images.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(images.length, (index) {
+                final isActive = index == _currentIndex;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  height: 6,
+                  width: isActive ? 16 : 6,
+                  decoration: BoxDecoration(
+                    color: isActive ? const Color(0xFF2D3FE3) : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                );
+              }),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
+      color: Colors.grey[200],
+      child: const Center(
+        child: Icon(Icons.image, size: 100, color: Colors.grey),
       ),
     );
   }

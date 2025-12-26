@@ -1,0 +1,16 @@
+# FastAPI proxy for Hugging Face clothing detection
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HF_ENDPOINT=https://crushedkatana-clothing-detection.hf.space/detect
+
+WORKDIR /app
+
+COPY requirements_fastapi.txt /app/
+RUN pip install --no-cache-dir -r requirements_fastapi.txt
+
+COPY fastapi_app.py /app/
+
+EXPOSE 8000
+CMD ["uvicorn", "fastapi_app:app", "--host", "0.0.0.0", "--port", "8000"]

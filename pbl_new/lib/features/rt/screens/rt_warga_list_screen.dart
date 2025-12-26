@@ -1,4 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:pbl_new/config/api_config.dart';
+import 'package:pbl_new/core/services/auth_service.dart';
 
 class RtWargaListScreen extends StatefulWidget {
   const RtWargaListScreen({super.key});
@@ -8,53 +13,103 @@ class RtWargaListScreen extends StatefulWidget {
 }
 
 class _RtWargaListScreenState extends State<RtWargaListScreen> {
-  final _wargaList = [
-    {
-      'name': 'Ibu Siti Aminah',
-      'address': 'Jl. Melati No. 12',
-      'phone': '0812-3456-7890',
-      'status': 'Terverifikasi',
-      'products': 5,
-      'avatar': 'I',
-      'verified': true,
-    },
-    {
-      'name': 'Pak Budi Santoso',
-      'address': 'Jl. Melati No. 15',
-      'phone': '0813-4567-8901',
-      'status': 'Terverifikasi',
-      'products': 3,
-      'avatar': 'P',
-      'verified': true,
-    },
-    {
-      'name': 'Dimas Pratama',
-      'address': 'Jl. Mawar No. 8',
-      'phone': '0814-5678-9012',
-      'status': 'Pending',
-      'products': 2,
-      'avatar': 'D',
-      'verified': false,
-    },
-    {
-      'name': 'Sari Wulandari',
-      'address': 'Jl. Anggrek No. 20',
-      'phone': '0815-6789-0123',
-      'status': 'Terverifikasi',
-      'products': 7,
-      'avatar': 'S',
-      'verified': true,
-    },
-    {
-      'name': 'Ahmad Fauzi',
-      'address': 'Jl. Dahlia No. 5',
-      'phone': '0816-7890-1234',
-      'status': 'Pending',
-      'products': 1,
-      'avatar': 'A',
-      'verified': false,
-    },
-  ];
+  List<Map<String, dynamic>> _wargaList = [];
+  bool _loading = true;
+  String _searchQuery = '';
+  int _totalWarga = 0;
+  int _verifiedWarga = 0;
+  int _pendingWarga = 0;
+  int _registeredWarga = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWargaData();
+  }
+
+  Future<void> _loadWargaData() async {
+    setState(() => _loading = true);
+    try {
+      final currentUser = AuthService.currentUser;
+      if (currentUser == null) {
+        setState(() => _loading = false);
+        return;
+      }
+
+      // Fetch warga by RT
+      final response = await http.get(
+        Uri.parse('${ApiConfig.usersEndpoint}?role=warga&rt=${currentUser.rt}'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['data'] != null) {
+          final List<dynamic> users = data['data'];
+          
+          List<Map<String, dynamic>> wargaList = [];
+          int verified = 0;
+          int pending = 0;
+          int registered = 0;
+
+          for (var user in users) {
+            final isVerified = (user['verification_status'] == 'verified') || (user['verified'] == 1) || (user['status'] == 'active');
+            if (isVerified) verified++;
+            if ((user['verification_status'] ?? user['status']) == 'pending') pending++;
+            final isRegistered = (user['joined_date'] != null) || (user['is_active'] == 1) || (user['email'] ?? '').toString().isNotEmpty;
+            if (isRegistered) registered++;
+
+            wargaList.add({
+              'id': user['id'] ?? '',
+              'name': user['name'] ?? 'Unknown',
+              'address': user['address'] ?? '-',
+              'phone': user['phone'] ?? '-',
+              'status': isVerified ? 'Terverifikasi' : 'Pending',
+              'products': user['product_count'] ?? 0,
+              'avatar': (user['name'] ?? 'U')[0].toUpperCase(),
+              'verified': isVerified,
+              'email': user['email'] ?? '',
+              'rt': user['rt'] ?? '',
+              'registered': isRegistered,
+            });
+          }
+
+          if (mounted) {
+            setState(() {
+              _wargaList = wargaList;
+              _totalWarga = wargaList.length;
+              _verifiedWarga = verified;
+              _pendingWarga = pending;
+              _registeredWarga = registered;
+              _loading = false;
+            });
+          }
+        } else {
+          setState(() => _loading = false);
+        }
+      } else {
+        setState(() => _loading = false);
+      }
+    } catch (e) {
+      print('Error loading warga data: $e');
+      setState(() => _loading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat data warga: $e')),
+        );
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredWargaList {
+    if (_searchQuery.isEmpty) return _wargaList;
+    return _wargaList
+        .where((warga) =>
+            warga['name'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            warga['phone'].toString().contains(_searchQuery) ||
+            warga['address'].toLowerCase().contains(_searchQuery.toLowerCase()))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,59 +127,77 @@ class _RtWargaListScreenState extends State<RtWargaListScreen> {
         ),
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
               children: [
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Cari warga...',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+                // Search Bar
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          onChanged: (value) {
+                            setState(() => _searchQuery = value);
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Cari warga...',
+                            prefixIcon: const Icon(Icons.search),
+                            filled: true,
+                            fillColor: Colors.grey[100],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
+                ),
+
+                // Stats
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildWargaStat(_totalWarga.toString(), 'Total'),
+                      _buildWargaStat(_verifiedWarga.toString(), 'Verified'),
+                      _buildWargaStat(_pendingWarga.toString(), 'Pending'),
+                      _buildWargaStat(_registeredWarga.toString(), 'Terdaftar'),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Warga List
+                Expanded(
+                  child: _filteredWargaList.isEmpty
+                      ? Center(
+                          child: Text(
+                            _searchQuery.isEmpty
+                                ? 'Tidak ada warga'
+                                : 'Warga tidak ditemukan',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _loadWargaData,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: _filteredWargaList.length,
+                            itemBuilder: (context, index) {
+                              final warga = _filteredWargaList[index];
+                              return _buildWargaCard(warga);
+                            },
+                          ),
+                        ),
                 ),
               ],
             ),
-          ),
-
-          // Stats
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildWargaStat('142', 'Total'),
-                _buildWargaStat('138', 'Verified'),
-                _buildWargaStat('4', 'Pending'),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Warga List
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _wargaList.length,
-              itemBuilder: (context, index) {
-                final warga = _wargaList[index];
-                return _buildWargaCard(warga);
-              },
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -228,9 +301,58 @@ class _RtWargaListScreenState extends State<RtWargaListScreen> {
               ),
 
               // Menu
-              IconButton(
+              PopupMenuButton(
                 icon: const Icon(Icons.more_vert),
-                onPressed: () {},
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    child: const Row(
+                      children: [
+                        Icon(Icons.visibility, size: 20),
+                        SizedBox(width: 12),
+                        Text('Lihat Detail'),
+                      ],
+                    ),
+                    onTap: () {
+                      _showWargaDetailDialog(warga);
+                    },
+                  ),
+                  PopupMenuItem(
+                    child: const Row(
+                      children: [
+                        Icon(Icons.edit, size: 20),
+                        SizedBox(width: 12),
+                        Text('Edit Data'),
+                      ],
+                    ),
+                    onTap: () {
+                      _showEditWargaDialog(warga);
+                    },
+                  ),
+                  PopupMenuItem(
+                    child: const Row(
+                      children: [
+                        Icon(Icons.delete, size: 20, color: Colors.red),
+                        SizedBox(width: 12),
+                        Text('Hapus', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                    onTap: () {
+                      _showDeleteConfirmation(warga);
+                    },
+                  ),
+                  if (warga['verified'] == true) PopupMenuItem(
+                    child: const Row(
+                      children: [
+                        Icon(Icons.undo, size: 20, color: Colors.orange),
+                        SizedBox(width: 12),
+                        Text('Batalkan Verifikasi', style: TextStyle(color: Colors.orange)),
+                      ],
+                    ),
+                    onTap: () {
+                      _unverifyWarga(warga);
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -299,12 +421,7 @@ class _RtWargaListScreenState extends State<RtWargaListScreen> {
               if (isPending)
                 ElevatedButton(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${warga['name']} telah diverifikasi'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                    _verifyWarga(warga);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2D3FE3),
@@ -325,5 +442,317 @@ class _RtWargaListScreenState extends State<RtWargaListScreen> {
         ],
       ),
     );
+  }
+
+  void _showWargaDetailDialog(Map<String, dynamic> warga) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Detail ${warga['name']}'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _detailRow('Nama', warga['name']),
+              _detailRow('Email', warga['email'] ?? '-'),
+              _detailRow('No. Telepon', warga['phone']),
+              _detailRow('Alamat', warga['address']),
+              _detailRow('RT', warga['rt']),
+              _detailRow('Status', warga['status']),
+              _detailRow('Jumlah Produk', warga['products'].toString()),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(Map<String, dynamic> warga) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Warga'),
+        content: Text('Apakah Anda yakin ingin menghapus ${warga['name']}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${warga['name']} telah dihapus'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              _loadWargaData();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _verifyWarga(Map<String, dynamic> warga) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // Backend expects user id in query string and field 'verification_status'
+      final response = await http.put(
+        Uri.parse('${ApiConfig.usersEndpoint}?id=${Uri.encodeComponent(warga['id'])}'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'verification_status': 'verified',
+          'is_active': 1,
+        }),
+      ).timeout(ApiConfig.timeout);
+
+      if (mounted) {
+        Navigator.pop(context);
+
+        if (response.statusCode == 200) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${warga['name']} telah diverifikasi'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadWargaData();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Gagal memverifikasi warga'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _unverifyWarga(Map<String, dynamic> warga) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      final response = await http.put(
+        Uri.parse('${ApiConfig.usersEndpoint}?id=${Uri.encodeComponent(warga['id'])}'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'verification_status': 'pending',
+          'is_active': 0,
+        }),
+      ).timeout(ApiConfig.timeout);
+
+      if (mounted) {
+        Navigator.pop(context);
+        if (response.statusCode == 200) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Verifikasi ${warga['name']} dibatalkan'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          _loadWargaData();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Gagal membatalkan verifikasi'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  void _showEditWargaDialog(Map<String, dynamic> warga) {
+    final nameController = TextEditingController(text: warga['name'] ?? '');
+    final emailController = TextEditingController(text: warga['email'] ?? '');
+    final phoneController = TextEditingController(text: warga['phone'] ?? '');
+    final addressController = TextEditingController(text: warga['address'] ?? '');
+    final rtController = TextEditingController(text: warga['rt'] ?? '');
+    final rwController = TextEditingController(text: warga['rw'] ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit ${warga['name']}'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildTextField('Nama', nameController),
+              _buildTextField('Email', emailController, keyboardType: TextInputType.emailAddress),
+              _buildTextField('No. Telepon', phoneController, keyboardType: TextInputType.phone),
+              _buildTextField('Alamat', addressController),
+              Row(
+                children: [
+                  Expanded(child: _buildTextField('RT', rtController)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildTextField('RW', rwController)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _submitEditWarga(
+                warga['id'],
+                nameController.text.trim(),
+                emailController.text.trim(),
+                phoneController.text.trim(),
+                addressController.text.trim(),
+                rtController.text.trim(),
+                rwController.text.trim(),
+              );
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller, {TextInputType? keyboardType}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: Colors.grey[100],
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitEditWarga(
+    String id,
+    String name,
+    String email,
+    String phone,
+    String address,
+    String rt,
+    String rw,
+  ) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final body = {
+        if (name.isNotEmpty) 'name': name,
+        if (email.isNotEmpty) 'email': email,
+        if (phone.isNotEmpty) 'phone': phone,
+        if (address.isNotEmpty) 'address': address,
+        if (rt.isNotEmpty) 'rt': rt,
+        if (rw.isNotEmpty) 'rw': rw,
+      };
+
+      final response = await http.put(
+        Uri.parse('${ApiConfig.usersEndpoint}?id=${Uri.encodeComponent(id)}'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(body),
+      ).timeout(ApiConfig.timeout);
+
+      if (mounted) {
+        Navigator.pop(context);
+        if (response.statusCode == 200) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Data warga berhasil diperbarui'), backgroundColor: Colors.green),
+          );
+          _loadWargaData();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gagal memperbarui data warga'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 }

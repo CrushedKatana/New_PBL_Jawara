@@ -1,7 +1,12 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
+
 import 'package:camera/camera.dart';
-import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:pbl_new/config/api_config.dart';
+
+import '../../../core/services/clothing_detection_service.dart';
 
 class CameraDetectionScreen extends StatefulWidget {
   const CameraDetectionScreen({super.key});
@@ -18,40 +23,44 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
   String? _detectedCategory;
   double _confidence = 0.0;
   File? _capturedImage;
+  final ImagePicker _picker = ImagePicker();
 
-  final ImageLabeler _imageLabeler = ImageLabeler(
-    options: ImageLabelerOptions(confidenceThreshold: 0.5),
-  );
-
-  // Map clothing-related labels to categories
-  final Map<String, String> _categoryMapping = {
-    'clothing': 'Pakaian',
-    'shirt': 'Atasan',
-    'dress': 'Dress',
-    't-shirt': 'Atasan',
-    'pants': 'Celana',
-    'jeans': 'Celana',
-    'jacket': 'Jaket',
-    'coat': 'Jaket',
-    'sweater': 'Atasan',
-    'shorts': 'Celana',
-    'skirt': 'Rok',
-    'top': 'Atasan',
-    'shoe': 'Sepatu',
-    'footwear': 'Sepatu',
-    'bag': 'Tas',
-    'handbag': 'Tas',
-    'backpack': 'Tas',
-    'accessory': 'Aksesoris',
-    'hat': 'Aksesoris',
-    'cap': 'Aksesoris',
-    'socks': 'Aksesoris',
+  // PCVK Categories - Hugging Face API returns Indonesian labels
+  final Map<String, String> _pcvkMapping = {
+    // English (old backend format - for backward compatibility)
+    'Hat': 'Topi',
+    'Shirt': 'Kemeja',
+    'T-Shirt': 'T-Shirt',  // Keep as is from API
+    'Shoes': 'Sepatu',
+    // Indonesian (Hugging Face API format) - identity mapping
+    'Topi': 'Topi',
+    'Kemeja': 'Kemeja',
+    'Sepatu': 'Sepatu',
+    // Alternative spellings
+    'Kaos': 'T-Shirt',
   };
 
   @override
   void initState() {
     super.initState();
+    _testApiConnection();
     _initializeCamera();
+  }
+
+  Future<void> _testApiConnection() async {
+    try {
+      print('🧪 Testing API connection...');
+      // Check HF Space health (use the actual endpoint from ApiConfig)
+      final healthUrl = ApiConfig.mlDetectionEndpoint.replaceAll('/detect', '/health');
+      final response = await http.get(Uri.parse(healthUrl)).timeout(
+        const Duration(seconds: 8),
+      );
+      print('✅ API Health: ${response.statusCode} - ${response.body}');
+    } catch (e) {
+      print('❌ API Connection failed: $e');
+      // Don't show warning snackbar - akan ada retry logic di detectClothing()
+      // User akan tahu jika memang gagal saat melakukan deteksi
+    }
   }
 
   Future<void> _initializeCamera() async {
@@ -106,43 +115,83 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
 
   Future<void> _detectCategory(File imageFile) async {
     try {
-      final InputImage inputImage = InputImage.fromFile(imageFile);
-      final List<ImageLabel> labels = await _imageLabeler.processImage(inputImage);
+      // Call PCVK ML model (HOG+SVM) via backend
+      final result = await ClothingDetectionService.detectClothing(
+        imageFile.path,
+        1, // Temporary user ID
+      );
 
-      if (labels.isNotEmpty) {
-        // Find clothing-related labels
-        String? detectedCategory;
-        double maxConfidence = 0.0;
+      print('=== ML Detection Result ===');
+      print('Full response: $result');
+      print('Response type: ${result.runtimeType}');
+      print('Success: ${result['success']}');
+      print('Predicted class: ${result['predicted_class']}');
+      print('Confidence: ${result['confidence']}');
+      print('Message: ${result['message']}');
+      print('========================');
 
-        for (final label in labels) {
-          final String labelText = label.label.toLowerCase();
-          
-          for (final entry in _categoryMapping.entries) {
-            if (labelText.contains(entry.key)) {
-              if (label.confidence > maxConfidence) {
-                maxConfidence = label.confidence;
-                detectedCategory = entry.value;
-              }
-            }
-          }
-        }
+      // Check if result is valid
+      if (result['success'] == true && result.containsKey('predicted_class')) {
+        final predictedClass = result['predicted_class'];
+        final confidence = result['confidence'];
 
-        if (detectedCategory != null) {
+        if (predictedClass != null && confidence != null) {
+          // Map PCVK categories to Indonesian
+          final mappedCategory = _pcvkMapping[predictedClass] ?? predictedClass;
+
           setState(() {
-            _detectedCategory = detectedCategory;
-            _confidence = maxConfidence;
+            _detectedCategory = mappedCategory;
+            _confidence = (confidence is double) ? confidence : 
+                          (confidence is int) ? confidence.toDouble() : 
+                          double.tryParse(confidence.toString()) ?? 0.5;
           });
-        } else {
-          // Default to "Pakaian" if no specific category detected
-          setState(() {
-            _detectedCategory = 'Pakaian';
-            _confidence = labels.first.confidence;
-          });
+          return; // Success, exit function
         }
       }
+      
+      // If we reach here, detection failed
+      final errorMsg = result['message'] ?? 'Detection failed - no prediction received';
+      print('ERROR: $errorMsg');
+      print('ERROR: Raw result keys: ${result.keys.toList()}');
+      
+      // Show error to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deteksi gagal: $errorMsg'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+      
+      throw Exception(errorMsg);
     } catch (e) {
-      print('Error detecting category: $e');
+      print('EXCEPTION in _detectCategory: $e');
+      // Fallback
+      setState(() {
+        _detectedCategory = 'Pakaian';
+        _confidence = 0.5;
+      });
     } finally {
+      setState(() {
+        _isDetecting = false;
+      });
+    }
+  }
+
+  Future<void> _pickFromGalleryAndDetect() async {
+    if (_isDetecting) return;
+    try {
+      final XFile? file = await _picker.pickImage(source: ImageSource.gallery);
+      if (file == null) return;
+      final imageFile = File(file.path);
+      setState(() {
+        _capturedImage = imageFile;
+        _isDetecting = true;
+      });
+      await _detectCategory(imageFile);
+    } catch (e) {
       setState(() {
         _isDetecting = false;
       });
@@ -170,7 +219,6 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
   @override
   void dispose() {
     _cameraController?.dispose();
-    _imageLabeler.close();
     super.dispose();
   }
 
@@ -391,33 +439,24 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
                             ),
                           ),
 
-                          // PCVK Active Button
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
+                          // PCVK Active Button (pick from gallery)
+                          ElevatedButton.icon(
+                            onPressed: _isDetecting ? null : _pickFromGalleryAndDetect,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2D3FE3),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
                             ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2D3FE3),
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(
-                                  Icons.auto_awesome,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'PCVK Active',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
+                            icon: const Icon(Icons.photo_library, color: Colors.white, size: 20),
+                            label: const Text(
+                              'PCVK Active',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],

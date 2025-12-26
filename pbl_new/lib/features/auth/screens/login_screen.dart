@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'register_screen.dart';
+import 'package:pbl_new/core/models/user_model.dart';
+import 'package:pbl_new/core/services/auth_service.dart';
 import 'package:pbl_new/features/admin/screens/admin_main_screen.dart';
 import 'package:pbl_new/features/rt/screens/rt_main_screen.dart';
 import 'package:pbl_new/main.dart';
-import 'package:pbl_new/core/services/auth_service.dart';
+
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -24,36 +27,89 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
-    // For demo mode, navigate directly to main screen
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const MainScreen()),
-    );
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email dan password harus diisi')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await AuthService().login(email, password);
+      
+      if (mounted) {
+        setState(() => _isLoading = false);
+
+        if (result['success'] == true) {
+          final user = result['user'] as UserModel;
+          
+          // Navigate based on user type
+          if (user.userType == 'admin') {
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const AdminMainScreen()),
+              );
+            }
+          } else if (user.userType == 'rt') {
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const RtMainScreen()),
+              );
+            }
+          } else {
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MainScreen(userRole: 'warga'),
+                ),
+              );
+            }
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['error'] ?? 'Login gagal')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 
-  void _handleDemoLogin(String role) {
+  Future<void> _handleDemoLogin(String role) async {
     String roleKey = role.toLowerCase();
     if (roleKey == 'rt/rw') roleKey = 'rt';
     
-    // Set demo user di AuthService
-    AuthService.setDemoUser(roleKey);
+    // Use real database credentials (password: password123)
+    String demoEmail = '';
+    if (roleKey == 'admin') {
+      demoEmail = 'admin@jawara.com';
+    } else if (roleKey == 'rt') {
+      demoEmail = 'budi.rt05@jawara.com'; // RT 05
+    } else {
+      demoEmail = 'aminah@jawara.com'; // warga di RT 05
+    }
     
-    // Navigate based on role
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) {
-          if (roleKey == 'admin') {
-            return const AdminMainScreen();
-          } else if (roleKey == 'rt') {
-            return const RtMainScreen();
-          } else {
-            return MainScreen(userRole: roleKey);
-          }
-        },
-      ),
-    );
+    // Auto-fill and login
+    _emailController.text = demoEmail;
+    _passwordController.text = 'password123';
+    
+    // Trigger login
+    await _handleLogin();
   }
 
   @override
@@ -270,7 +326,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: _handleLogin,
+                                onPressed: _isLoading ? null : _handleLogin,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF2D3FE3),
                                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -278,19 +334,30 @@ class _LoginScreenState extends State<LoginScreen> {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                child: const Row(
+                                child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(
-                                      'Masuk',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                    if (_isLoading)
+                                      const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    else
+                                      const Text(
+                                        'Masuk',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
                                       ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Icon(Icons.arrow_forward, color: Colors.white),
+                                    if (!_isLoading) const SizedBox(width: 8),
+                                    if (!_isLoading)
+                                      const Icon(Icons.arrow_forward, color: Colors.white),
                                   ],
                                 ),
                               ),
@@ -304,68 +371,73 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 24),
                 // Demo mode buttons
                 const Text(
-                  'Demo Mode - Login Cepat:',
+                  'Demo Mode (Opsional) - Login Cepat:',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 12,
                     color: Colors.grey,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () => _handleDemoLogin('Warga'),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF2D3FE3)),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => _handleDemoLogin('Warga'),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF2D3FE3)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Warga',
-                        style: TextStyle(color: Color(0xFF2D3FE3)),
-                      ),
-                    ),
-                    OutlinedButton(
-                      onPressed: () => _handleDemoLogin('RT/RW'),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF2D3FE3)),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        child: const Text(
+                          'Demo Warga',
+                          style: TextStyle(color: Color(0xFF2D3FE3), fontSize: 12),
                         ),
                       ),
-                      child: const Text(
-                        'RT/RW',
-                        style: TextStyle(color: Color(0xFF2D3FE3)),
-                      ),
-                    ),
-                    OutlinedButton(
-                      onPressed: () => _handleDemoLogin('Admin'),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF2D3FE3)),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: () => _handleDemoLogin('RT/RW'),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF2D3FE3)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        child: const Text(
+                          'Demo RT/RW',
+                          style: TextStyle(color: Color(0xFF2D3FE3), fontSize: 12),
                         ),
                       ),
-                      child: const Text(
-                        'Admin',
-                        style: TextStyle(color: Color(0xFF2D3FE3)),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: () => _handleDemoLogin('Admin'),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF2D3FE3)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Demo Admin',
+                          style: TextStyle(color: Color(0xFF2D3FE3), fontSize: 12),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),

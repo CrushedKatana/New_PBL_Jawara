@@ -1,12 +1,95 @@
 import 'package:flutter/material.dart';
 import 'package:pbl_new/core/services/auth_service.dart';
+import 'package:pbl_new/core/services/profile_service.dart';
 import 'package:pbl_new/features/auth/screens/login_screen.dart';
 
-class AdminProfileScreen extends StatelessWidget {
+class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({super.key});
 
   @override
+  State<AdminProfileScreen> createState() => _AdminProfileScreenState();
+}
+
+class _AdminProfileScreenState extends State<AdminProfileScreen> {
+  Map<String, dynamic>? _profileData;
+  Map<String, dynamic>? _statsData;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
+  }
+
+  Future<void> _loadProfileData() async {
+    final currentUser = AuthService.currentUser;
+    if (currentUser == null) return;
+
+    setState(() => _isLoading = true);
+
+    final results = await Future.wait([
+      ProfileService.getUserProfile(currentUser.id),
+      ProfileService.getUserStats(currentUser.id),
+    ]);
+
+    if (mounted) {
+      setState(() {
+        _profileData = results[0];
+        _statsData = results[1];
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Logout'),
+        content: const Text('Apakah Anda yakin ingin keluar dari admin panel?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await AuthService.logout();
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final currentUser = AuthService.currentUser;
+    
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF2D3FE3),
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+
+    final userData = _profileData?['user'];
+    
     return Scaffold(
       backgroundColor: const Color(0xFF2D3FE3),
       body: SafeArea(
@@ -76,16 +159,16 @@ class AdminProfileScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Budi Santoso',
-                                style: TextStyle(
+                              Text(
+                                userData?['name'] ?? currentUser?.name ?? 'Administrator',
+                                style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Administrator',
+                                userData?['role'] ?? 'Administrator',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Colors.grey[600],
@@ -142,7 +225,7 @@ class AdminProfileScreen extends StatelessWidget {
                         onChanged: (value) {
                           // Toggle dark mode
                         },
-                        activeColor: const Color(0xFF2D3FE3),
+                        activeThumbColor: const Color(0xFF2D3FE3),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -161,41 +244,7 @@ class AdminProfileScreen extends StatelessWidget {
                       title: 'Keluar',
                       iconColor: Colors.red,
                       titleColor: Colors.red,
-                      onTap: () async {
-                        // Show confirmation dialog
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Konfirmasi'),
-                            content: const Text('Apakah Anda yakin ingin keluar?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Batal'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.red,
-                                ),
-                                child: const Text('Keluar'),
-                              ),
-                            ],
-                          ),
-                        );
-
-                        if (confirmed == true && context.mounted) {
-                          await AuthService.logout();
-                          if (context.mounted) {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (context) => const LoginScreen(),
-                              ),
-                              (route) => false,
-                            );
-                          }
-                        }
-                      },
+                      onTap: _handleLogout,
                     ),
                     const SizedBox(height: 32),
                     

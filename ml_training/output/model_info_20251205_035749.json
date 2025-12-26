@@ -1,0 +1,76 @@
+{
+  "algorithm": "SVM (Support Vector Machine)",
+  "feature_extraction": "HOG (Histogram of Oriented Gradients)",
+  "model_type": "CalibratedClassifierCV",
+  "kernel": "linear (LinearSVC)",
+  "C": 1.0,
+  "num_classes": 4,
+  "categories": {
+    "0": "Hat",
+    "1": "Shirt",
+    "2": "Shoes",
+    "3": "T-Shirt"
+  },
+  "train_accuracy": 0.9871,
+  "val_accuracy": 0.7769,
+  "timestamp": "20251205_035749",
+  "training_date": "2025-12-05 03:57:49",
+  "dataset_info": {
+    "total_samples": 3982,
+    "train_samples": 2786,
+    "val_samples": 399,
+    "test_samples": 797,
+    "augmentation": true,
+    "original_records": 1991
+  },
+  "hog_parameters": {
+    "orientations": 9,
+    "pixels_per_cell": [8, 8],
+    "cells_per_block": [2, 2],
+    "block_norm": "L2-Hys",
+    "feature_dimension": 8100,
+    "image_size": [128, 128]
+  },
+  "model_parameters": {
+    "base_estimator": "LinearSVC",
+    "max_iterations": 2000,
+    "calibration_method": "sigmoid",
+    "cv_folds": 3,
+    "multi_core": true,
+    "n_jobs": -1
+  },
+  "performance_metrics": {
+    "train_accuracy_percent": "98.71%",
+    "val_accuracy_percent": "77.69%",
+    "overfitting_gap": 0.2102,
+    "expected_real_world_accuracy": "75-80%"
+  },
+  "model_files": {
+    "model": "clothing_svm_best.pkl",
+    "scaler": "clothing_scaler_best.pkl",
+    "label_mapping": "label_mapping.json",
+    "timestamped_model": "clothing_svm_model_20251205_035749.pkl",
+    "timestamped_scaler": "clothing_scaler_20251205_035749.pkl"
+  },
+  "test_prediction": {
+    "test_image": "Hat_00d94e21-5891-492e-be0e-792e7338c077.jpg",
+    "ground_truth": "Hat",
+    "predicted_class": "Hat",
+    "confidence": 0.7901,
+    "probabilities": {
+      "Hat": 0.7901,
+      "Shirt": 0.0551,
+      "Shoes": 0.0025,
+      "T-Shirt": 0.1523
+    },
+    "prediction_correct": true
+  },
+  "deployment_status": "READY",
+  "notes": [
+    "Model trained successfully with Linear SVM for faster training",
+    "Multi-core CPU optimization enabled for efficient processing",
+    "Validation accuracy of 77.69% is acceptable for production use",
+    "Some overfitting detected (21% gap) - consider regularization tuning",
+    "Model ready for integration with backend and Flutter app"
+  ]
+}

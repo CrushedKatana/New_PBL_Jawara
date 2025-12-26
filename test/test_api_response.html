@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test ML API Response Format</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }
+        .test-box { border: 1px solid #ccc; padding: 15px; margin: 15px 0; border-radius: 8px; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test ML API Response Parsing</h1>
+    
+    <div class="test-box">
+        <h3>Test 1: Gradio Wrapped Format (Expected)</h3>
+        <button onclick="testGradioWrapped()">Test</button>
+        <pre id="result1"></pre>
+    </div>
+    
+    <div class="test-box">
+        <h3>Test 2: Direct JSON Format</h3>
+        <button onclick="testDirectJSON()">Test</button>
+        <pre id="result2"></pre>
+    </div>
+    
+    <div class="test-box">
+        <h3>Test 3: Error Response</h3>
+        <button onclick="testError()">Test</button>
+        <pre id="result3"></pre>
+    </div>
+    
+    <div class="test-box success">
+        <h3>✅ Expected Dart Parsing Result:</h3>
+        <pre>{
+  'success': true,
+  'predicted_class': 'Topi',
+  'confidence': 0.998,
+  'top3_predictions': [...],
+  'user_id': 1
+}</pre>
+    </div>
+    
+    <script>
+        function testGradioWrapped() {
+            // Gradio format: {"data": ["json_string"]}
+            const response = {
+                "data": [
+                    JSON.stringify({
+                        "success": true,
+                        "predicted_class": "Topi",
+                        "confidence": 0.998,
+                        "top3_predictions": [
+                            {"class": "Topi", "confidence": 0.998},
+                            {"class": "Kemeja", "confidence": 0.001},
+                            {"class": "Sepatu", "confidence": 0.001}
+                        ],
+                        "method": "HOG + SVM"
+                    })
+                ]
+            };
+            
+            document.getElementById('result1').textContent = JSON.stringify(response, null, 2);
+            
+            // Simulate Dart parsing
+            try {
+                const dataField = response.data;
+                if (Array.isArray(dataField) && dataField.length > 0) {
+                    const firstElement = dataField[0];
+                    const parsed = JSON.parse(firstElement);
+                    parsed.user_id = 1;
+                    console.log('✅ Parsed:', parsed);
+                    alert('✅ SUCCESS: Parsed correctly\n' + JSON.stringify(parsed, null, 2));
+                }
+            } catch (e) {
+                alert('❌ ERROR: ' + e.message);
+            }
+        }
+        
+        function testDirectJSON() {
+            // Direct format (no wrapping)
+            const response = {
+                "success": true,
+                "predicted_class": "Topi",
+                "confidence": 0.998,
+                "top3_predictions": [
+                    {"class": "Topi", "confidence": 0.998},
+                    {"class": "Kemeja", "confidence": 0.001},
+                    {"class": "Sepatu", "confidence": 0.001}
+                ]
+            };
+            
+            document.getElementById('result2').textContent = JSON.stringify(response, null, 2);
+            
+            // Simulate Dart parsing
+            if (response.predicted_class) {
+                response.user_id = 1;
+                console.log('✅ Parsed:', response);
+                alert('✅ SUCCESS: Direct format\n' + JSON.stringify(response, null, 2));
+            }
+        }
+        
+        function testError() {
+            // Error response
+            const response = {
+                "detail": "Internal Server Error"
+            };
+            
+            document.getElementById('result3').textContent = JSON.stringify(response, null, 2);
+            alert('❌ This should trigger fallback to "Pakaian 50%"');
+        }
+    </script>
+</body>
+</html>

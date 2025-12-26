@@ -159,14 +159,10 @@ CREATE TABLE activities (
 -- DATA SEEDING - Categories
 -- ============================================
 INSERT INTO categories (id, name, icon, color) VALUES
-('cat1', 'Elektronik', 'devices', '#2196F3'),
-('cat2', 'Fashion', 'checkroom', '#E91E63'),
-('cat3', 'Makanan', 'restaurant', '#FF9800'),
-('cat4', 'Furniture', 'weekend', '#795548'),
-('cat5', 'Olahraga', 'sports_soccer', '#4CAF50'),
-('cat6', 'Buku', 'menu_book', '#9C27B0'),
-('cat7', 'Mainan', 'toys', '#00BCD4'),
-('cat8', 'Lainnya', 'more_horiz', '#607D8B');
+('cat1', 'T-Shirt', 'checkroom', '#2196F3'),
+('cat2', 'Topi', 'sports_baseball', '#E91E63'),
+('cat3', 'Kemeja', 'person', '#4CAF50'),
+('cat4', 'Sepatu', 'sports_soccer', '#FF9800');
 
 -- ============================================
 -- DATA SEEDING - Users
@@ -214,50 +210,50 @@ INSERT INTO users (id, name, email, password, phone, address, rt, rw, user_type,
 -- ============================================
 INSERT INTO products (id, title, description, price, category_id, seller_id, location, is_active, approval_status, approved_by, view_count) VALUES
 -- Approved Products
-('prod001', 'Laptop Asus ROG', 'Laptop gaming kondisi mulus, RAM 16GB, SSD 512GB', 12500000, 'cat1', 'warga011', 'Jl. Veteran No. 52, RT 05', TRUE, 'approved', 'rt005', 245),
-('prod002', 'Sepatu Nike Air Max', 'Sepatu olahraga original, size 42, warna hitam', 850000, 'cat2', 'warga001', 'Jl. Sudirman No. 10, RT 01', TRUE, 'approved', 'rt001', 189),
-('prod003', 'Nasi Goreng Spesial', 'Nasi goreng dengan telur, ayam, dan sayuran segar', 15000, 'cat3', 'warga010', 'Jl. Veteran No. 50, RT 05', TRUE, 'approved', 'rt005', 432),
-('prod004', 'Sofa Minimalis', 'Sofa 3 seater, bahan kulit sintetis, warna abu-abu', 2500000, 'cat4', 'warga005', 'Jl. Gatot Subroto No. 22, RT 02', TRUE, 'approved', 'rt002', 167),
-('prod005', 'Raket Badminton Yonex', 'Raket badminton profesional dengan cover', 450000, 'cat5', 'warga003', 'Jl. Sudirman No. 14, RT 01', TRUE, 'approved', 'rt001', 203),
-('prod006', 'Harry Potter Complete Set', 'Set lengkap 7 buku Harry Potter bahasa Indonesia', 650000, 'cat6', 'warga006', 'Jl. Ahmad Yani No. 30, RT 03', TRUE, 'approved', 'rt003', 156),
-('prod007', 'Lego Star Wars', 'Lego set Star Wars Millennium Falcon, lengkap', 1200000, 'cat7', 'warga009', 'Jl. Diponegoro No. 42, RT 04', TRUE, 'approved', 'rt004', 98),
-('prod008', 'Kulkas 2 Pintu Sharp', 'Kulkas bekas kondisi bagus, hemat listrik', 1800000, 'cat1', 'warga004', 'Jl. Gatot Subroto No. 20, RT 02', TRUE, 'approved', 'rt002', 134),
+('prod001', 'T-Shirt Polos Hitam', 'Kaos polos katun combed 30s, nyaman dipakai', 75000, 'cat1', 'warga001', 'Jl. Sudirman No. 10, RT 01', TRUE, 'approved', 'rt001', 245),
+('prod002', 'T-Shirt Band Supreme', 'Kaos band original import, size L', 150000, 'cat1', 'warga011', 'Jl. Veteran No. 52, RT 05', TRUE, 'approved', 'rt005', 189),
+('prod003', 'Topi Baseball NY', 'Topi baseball original New York Yankees', 120000, 'cat2', 'warga003', 'Jl. Sudirman No. 14, RT 01', TRUE, 'approved', 'rt001', 432),
+('prod004', 'Topi Snapback Hitam', 'Topi snapback polos warna hitam premium', 85000, 'cat2', 'warga005', 'Jl. Gatot Subroto No. 22, RT 02', TRUE, 'approved', 'rt002', 167),
+('prod005', 'Kemeja Flanel Kotak', 'Kemeja flanel motif kotak merah hitam', 95000, 'cat3', 'warga006', 'Jl. Ahmad Yani No. 30, RT 03', TRUE, 'approved', 'rt003', 203),
+('prod006', 'Kemeja Formal Putih', 'Kemeja putih lengan panjang untuk kantor', 125000, 'cat3', 'warga010', 'Jl. Veteran No. 50, RT 05', TRUE, 'approved', 'rt005', 156),
+('prod007', 'Sepatu Nike Air Max', 'Sepatu olahraga original, size 42, warna hitam', 850000, 'cat4', 'warga004', 'Jl. Gatot Subroto No. 20, RT 02', TRUE, 'approved', 'rt002', 98),
+('prod008', 'Sepatu Converse All Star', 'Sepatu Converse high top warna merah, size 40', 650000, 'cat4', 'warga009', 'Jl. Diponegoro No. 42, RT 04', TRUE, 'approved', 'rt004', 134),
 
 -- Pending Approval
-('prod009', 'iPhone 13 Pro', 'iPhone second mulus 128GB warna gold', 9500000, 'cat1', 'warga007', 'Jl. Ahmad Yani No. 32, RT 03', TRUE, 'pending', NULL, 0),
-('prod010', 'Jaket Kulit Premium', 'Jaket kulit asli kambing, size L', 750000, 'cat2', 'warga012', 'Jl. Veteran No. 54, RT 05', TRUE, 'pending', NULL, 0),
-('prod011', 'Meja Belajar Kayu Jati', 'Meja belajar solid jati dengan laci', 1500000, 'cat4', 'warga002', 'Jl. Sudirman No. 12, RT 01', TRUE, 'pending', NULL, 0);
+('prod009', 'T-Shirt Oversize Putih', 'Kaos oversize premium cotton, trendy', 110000, 'cat1', 'warga007', 'Jl. Ahmad Yani No. 32, RT 03', TRUE, 'pending', NULL, 0),
+('prod010', 'Topi Bucket Hat Cream', 'Topi bucket hat warna cream, cocok untuk jalan', 90000, 'cat2', 'warga012', 'Jl. Veteran No. 54, RT 05', TRUE, 'pending', NULL, 0),
+('prod011', 'Kemeja Batik Slim Fit', 'Kemeja batik modern slim fit size M', 180000, 'cat3', 'warga002', 'Jl. Sudirman No. 12, RT 01', TRUE, 'pending', NULL, 0);
 
 -- ============================================
 -- DATA SEEDING - Transactions
 -- ============================================
 INSERT INTO transactions (id, product_id, buyer_id, seller_id, amount, status, payment_method) VALUES
-('trx001', 'prod003', 'warga002', 'warga010', 15000, 'completed', 'Cash'),
-('trx002', 'prod005', 'warga004', 'warga003', 450000, 'completed', 'Transfer Bank'),
-('trx003', 'prod002', 'warga006', 'warga001', 850000, 'completed', 'Cash'),
-('trx004', 'prod006', 'warga009', 'warga006', 650000, 'pending', 'Transfer Bank'),
-('trx005', 'prod001', 'warga008', 'warga011', 12500000, 'completed', 'Transfer Bank');
+('trx001', 'prod001', 'warga002', 'warga001', 75000, 'completed', 'Cash'),
+('trx002', 'prod003', 'warga004', 'warga003', 120000, 'completed', 'Transfer Bank'),
+('trx003', 'prod007', 'warga006', 'warga004', 850000, 'completed', 'Cash'),
+('trx004', 'prod006', 'warga009', 'warga010', 125000, 'pending', 'Transfer Bank'),
+('trx005', 'prod002', 'warga008', 'warga011', 150000, 'completed', 'Transfer Bank');
 
 -- ============================================
 -- DATA SEEDING - Messages
 -- ============================================
 INSERT INTO messages (id, sender_id, receiver_id, product_id, message, is_read, created_at) VALUES
-('msg001', 'warga002', 'warga010', 'prod003', 'Masih ada?', TRUE, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
-('msg002', 'warga010', 'warga002', 'prod003', 'Masih ada kak, mau pesan berapa?', TRUE, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
-('msg003', 'warga002', 'warga010', 'prod003', 'Pesan 2 porsi ya', TRUE, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
-('msg004', 'warga004', 'warga003', 'prod005', 'Raketnya masih bagus kan?', TRUE, DATE_SUB(NOW(), INTERVAL 3 DAY)),
-('msg005', 'warga003', 'warga004', 'prod005', 'Masih bagus banget, jarang dipakai', TRUE, DATE_SUB(NOW(), INTERVAL 3 DAY)),
-('msg006', 'warga006', 'warga001', 'prod002', 'Boleh COD?', FALSE, DATE_SUB(NOW(), INTERVAL 30 MINUTE));
+('msg001', 'warga002', 'warga001', 'prod001', 'Kualitas bahannya bagus ga?', TRUE, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+('msg002', 'warga001', 'warga002', 'prod001', 'Bagus kak, katun combed premium', TRUE, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+('msg003', 'warga002', 'warga001', 'prod001', 'Oke saya ambil ya', TRUE, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+('msg004', 'warga004', 'warga003', 'prod003', 'Topinya masih ada ga?', TRUE, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+('msg005', 'warga003', 'warga004', 'prod003', 'Masih ada kak, original NY', TRUE, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+('msg006', 'warga006', 'warga004', 'prod007', 'Boleh COD?', FALSE, DATE_SUB(NOW(), INTERVAL 30 MINUTE));
 
 -- ============================================
 -- DATA SEEDING - ML Detections
 -- ============================================
 INSERT INTO ml_detections (id, product_id, detected_category, confidence, model_version, detection_time) VALUES
-('det001', 'prod001', 'Elektronik', 96.5, 'PCVK-v1.2', DATE_SUB(NOW(), INTERVAL 2 MINUTE)),
-('det002', 'prod002', 'Fashion', 94.2, 'PCVK-v1.2', DATE_SUB(NOW(), INTERVAL 5 MINUTE)),
-('det003', 'prod003', 'Makanan', 98.1, 'PCVK-v1.2', DATE_SUB(NOW(), INTERVAL 10 MINUTE)),
-('det004', 'prod004', 'Furniture', 92.7, 'PCVK-v1.2', DATE_SUB(NOW(), INTERVAL 15 MINUTE)),
-('det005', 'prod005', 'Olahraga', 95.3, 'PCVK-v1.2', DATE_SUB(NOW(), INTERVAL 20 MINUTE));
+('det001', 'prod001', 'T-Shirt', 96.5, 'PCVK-v1.2', DATE_SUB(NOW(), INTERVAL 2 MINUTE)),
+('det002', 'prod002', 'T-Shirt', 94.2, 'PCVK-v1.2', DATE_SUB(NOW(), INTERVAL 5 MINUTE)),
+('det003', 'prod003', 'Topi', 98.1, 'PCVK-v1.2', DATE_SUB(NOW(), INTERVAL 10 MINUTE)),
+('det004', 'prod005', 'Kemeja', 92.7, 'PCVK-v1.2', DATE_SUB(NOW(), INTERVAL 15 MINUTE)),
+('det005', 'prod007', 'Sepatu', 95.3, 'PCVK-v1.2', DATE_SUB(NOW(), INTERVAL 20 MINUTE));
 
 -- ============================================
 -- DATA SEEDING - RT Metrics
@@ -300,7 +296,7 @@ INSERT INTO activities (user_id, activity_type, description, created_at) VALUES
 -- Total Tables: 8
 -- Total Records: 
 --   - Users: 17 (1 admin, 5 RT, 12 warga)
---   - Categories: 8
+--   - Categories: 4 (T-Shirt, Topi, Kemeja, Sepatu)
 --   - Products: 11 (8 approved, 3 pending)
 --   - Transactions: 5
 --   - Messages: 6
@@ -321,21 +317,5 @@ INSERT INTO activities (user_id, activity_type, description, created_at) VALUES
 -- Warga: aminah@jawara.com / password123
 -- ============================================
 
--- Insert default categories
-INSERT INTO categories (id, name, icon) VALUES
-('cat1', 'Makanan', 'food'),
-('cat2', 'Elektronik', 'electronics'),
-('cat3', 'Fashion', 'fashion'),
-('cat4', 'Perabotan', 'furniture'),
-('cat5', 'Lainnya', 'other');
-
--- Insert sample users
-INSERT INTO users (id, name, email, password, phone, address, rt, rw, user_type) VALUES
-('user1', 'Budi Santoso', 'budi@email.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '081234567890', 'Jl. Mawar No. 1', '001', '005', 'warga'),
-('user2', 'Siti Aminah', 'siti@email.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '081234567891', 'Jl. Melati No. 2', '002', '005', 'warga'),
-('user3', 'Ahmad Hidayat', 'ahmad@email.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '081234567892', 'Jl. Anggrek No. 3', '001', '005', 'rt');
-
--- Insert sample products
-INSERT INTO products (id, title, description, price, category_id, seller_id, location, is_active) VALUES
-('prod1', 'Nasi Goreng Spesial', 'Nasi goreng dengan telur dan ayam', 15000, 'cat1', 'user1', 'Jl. Mawar No. 1', TRUE),
-('prod2', 'Laptop Bekas', 'Laptop second kondisi mulus', 3500000, 'cat2', 'user2', 'Jl. Melati No. 2', TRUE);
+-- Note: Main seed data already inserted above. Below are legacy duplicates (kept for backward compatibility)
+-- The main seed contains the complete dataset with 4 fashion categories.
