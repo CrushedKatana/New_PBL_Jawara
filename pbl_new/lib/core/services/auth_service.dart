@@ -10,6 +10,36 @@ class AuthService {
   
   static UserModel? get currentUser => _currentUser;
 
+  Map<String, dynamic> _decodeJsonResponse(http.Response response, {required String context}) {
+    final contentType = (response.headers['content-type'] ?? '').toLowerCase();
+    final body = response.body;
+
+    final trimmed = body.trimLeft();
+    final looksLikeJson = trimmed.startsWith('{') || trimmed.startsWith('[');
+    if (!contentType.contains('application/json') && !looksLikeJson) {
+      final snippet = body.length > 300 ? body.substring(0, 300) : body;
+      return {
+        'success': false,
+        'error': 'Server mengembalikan response non-JSON ($context). Status: ${response.statusCode}. Body: $snippet',
+      };
+    }
+
+    try {
+      final decoded = json.decode(body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      return {
+        'success': false,
+        'error': 'Response JSON tidak valid ($context): expected object',
+      };
+    } catch (e) {
+      final snippet = body.length > 300 ? body.substring(0, 300) : body;
+      return {
+        'success': false,
+        'error': 'Gagal parse JSON ($context). Status: ${response.statusCode}. Error: $e. Body: $snippet',
+      };
+    }
+  }
+
   // Login
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
@@ -27,7 +57,7 @@ class AuthService {
         },
       );
 
-      final data = json.decode(response.body);
+      final data = _decodeJsonResponse(response, context: 'login');
 
       if (response.statusCode == 200 && data['success'] == true) {
         _currentUser = UserModel.fromJson(data['data']);
@@ -74,7 +104,7 @@ class AuthService {
         }),
       ).timeout(ApiConfig.timeout);
 
-      final data = json.decode(response.body);
+      final data = _decodeJsonResponse(response, context: 'register');
 
       if (response.statusCode == 201 && data['success'] == true) {
         _currentUser = UserModel.fromJson(data['data']);
@@ -96,7 +126,7 @@ class AuthService {
         headers: {'Content-Type': 'application/json'},
       ).timeout(ApiConfig.timeout);
 
-      final data = json.decode(response.body);
+      final data = _decodeJsonResponse(response, context: 'getUserProfile');
 
       if (response.statusCode == 200 && data['success'] == true) {
         return {'success': true, 'user': UserModel.fromJson(data['data'])};
@@ -117,7 +147,7 @@ class AuthService {
         body: json.encode(user.toJson()),
       ).timeout(ApiConfig.timeout);
 
-      final data = json.decode(response.body);
+      final data = _decodeJsonResponse(response, context: 'updateProfile');
 
       if (response.statusCode == 200 && data['success'] == true) {
         _currentUser = user;

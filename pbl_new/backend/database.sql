@@ -169,6 +169,10 @@ INSERT INTO categories (id, name, icon, color) VALUES
 -- ============================================
 -- Password untuk semua user demo: "password123"
 -- Hash: $2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi
+-- Catatan: hash di bawah ini adalah hash contoh dan bisa berbeda.
+-- Jika setelah import login masih "Invalid password", jalankan:
+--   POST http://localhost/jawara/backend/reset_demo_passwords.php
+-- untuk reset semua password user menjadi "password123".
 
 -- Admin
 INSERT INTO users (id, name, email, password, phone, address, rt, rw, user_type, verification_status, is_active, joined_date) VALUES

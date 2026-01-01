@@ -1,4 +1,13 @@
 <?php
+// Matikan tampilan error HTML ke client, log saja ke server
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+ini_set('log_errors', 1);
+error_reporting(E_ALL);
+
+// Buffer semua output supaya tidak ada "<br /><b>..."/whitespace nyasar yang merusak JSON
+ob_start();
+
 // Konfigurasi Database MySQL XAMPP
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
@@ -19,9 +28,10 @@ function get_db() {
         );
         return $pdo;
     } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
-        exit;
+        sendJsonResponse([
+            'success' => false,
+            'error' => 'Database connection failed: ' . $e->getMessage(),
+        ], 500);
     }
 }
 
@@ -30,9 +40,10 @@ function getDbConnection() {
     $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
     
     if ($conn->connect_error) {
-        http_response_code(500);
-        echo json_encode(['error' => 'Database connection failed: ' . $conn->connect_error]);
-        exit;
+        sendJsonResponse([
+            'success' => false,
+            'error' => 'Database connection failed: ' . $conn->connect_error,
+        ], 500);
     }
     
     $conn->set_charset("utf8mb4");
@@ -43,6 +54,11 @@ function getDbConnection() {
 function sendJsonResponse($data, $statusCode = 200) {
     http_response_code($statusCode);
     header('Content-Type: application/json');
+
+    // Bersihkan output yang mungkin sudah terlanjur tercetak
+    if (ob_get_length()) {
+        ob_clean();
+    }
     echo json_encode($data);
     exit;
 }

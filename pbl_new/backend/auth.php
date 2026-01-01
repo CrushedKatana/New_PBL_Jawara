@@ -1,6 +1,27 @@
 <?php
 require_once 'config.php';
 
+// Global error & exception handler supaya tidak ada output HTML (<br /><b>...) ke client
+set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+    // Jika error ini disupress dengan @, biarkan handler default
+    if (!(error_reporting() & $errno)) {
+        return false;
+    }
+
+    sendJsonResponse([
+        'success' => false,
+        'error' => 'Internal server error: ' . $errstr,
+        'code' => $errno,
+    ], 500);
+});
+
+set_exception_handler(function ($e) {
+    sendJsonResponse([
+        'success' => false,
+        'error' => 'Unhandled exception: ' . $e->getMessage(),
+    ], 500);
+});
+
 $conn = getDbConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -20,12 +41,42 @@ switch ($method) {
         updateUserProfile($conn);
         break;
     default:
-        sendJsonResponse(['error' => 'Method not allowed'], 405);
+        sendJsonResponse(['success' => false, 'error' => 'Method not allowed'], 405);
+}
+
+// Helper untuk membaca dan memvalidasi input JSON
+function getJsonInput() {
+    $raw = file_get_contents('php://input');
+    $data = json_decode($raw, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        sendJsonResponse([
+            'success' => false,
+            'error' => 'Invalid JSON input: ' . json_last_error_msg(),
+        ], 400);
+    }
+
+    if (!is_array($data)) {
+        sendJsonResponse([
+            'success' => false,
+            'error' => 'Invalid request body',
+        ], 400);
+    }
+
+    return $data;
 }
 
 function register($conn) {
-    $data = json_decode(file_get_contents('php://input'), true);
-    
+    $data = getJsonInput();
+
+    // Validasi field wajib
+    if (empty($data['name']) || empty($data['email']) || empty($data['password'])) {
+        sendJsonResponse([
+            'success' => false,
+            'error' => 'Name, email, dan password wajib diisi',
+        ], 400);
+    }
+
     $id = uniqid('user_');
     $name = $conn->real_escape_string($data['name']);
     $email = $conn->real_escape_string($data['email']);
@@ -64,8 +115,15 @@ function register($conn) {
 }
 
 function login($conn) {
-    $data = json_decode(file_get_contents('php://input'), true);
-    
+    $data = getJsonInput();
+
+    if (empty($data['email']) || empty($data['password'])) {
+        sendJsonResponse([
+            'success' => false,
+            'error' => 'Email dan password wajib diisi',
+        ], 400);
+    }
+
     $email = $conn->real_escape_string($data['email']);
     $password = $data['password'];
     
@@ -109,8 +167,15 @@ function getUserProfile($conn) {
 }
 
 function updateUserProfile($conn) {
-    $data = json_decode(file_get_contents('php://input'), true);
-    
+    $data = getJsonInput();
+
+    if (empty($data['id']) || empty($data['name'])) {
+        sendJsonResponse([
+            'success' => false,
+            'error' => 'User ID dan name wajib diisi',
+        ], 400);
+    }
+
     $id = $conn->real_escape_string($data['id']);
     $name = $conn->real_escape_string($data['name']);
     $phone = $conn->real_escape_string($data['phone'] ?? '');

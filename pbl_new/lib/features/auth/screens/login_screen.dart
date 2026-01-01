@@ -94,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
     String roleKey = role.toLowerCase();
     if (roleKey == 'rt/rw') roleKey = 'rt';
     
-    // Use real database credentials (password: password123)
+    // Demo credentials (password: password123)
     String demoEmail = '';
     if (roleKey == 'admin') {
       demoEmail = 'admin@jawara.com';
